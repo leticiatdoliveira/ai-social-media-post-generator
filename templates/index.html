@@ -1,0 +1,155 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Media Content Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="page-container">
+        <div class="container">
+            <h1>Social Media Content Generator</h1>
+
+            <form id="contentForm">
+                <div class="form-group">
+                    <label for="subject">Subject (Theme of the post)</label>
+                    <input type="text" id="subject" name="subject" placeholder="e.g. New product launch, Industry trends, etc." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="platform">Social Media Platform</label>
+                    <div class="select-wrapper">
+                        <select id="platform" name="platform" required>
+                            <option value="">Select a platform</option>
+                            <option value="LinkedIn">LinkedIn</option>
+                            <option value="Instagram">Instagram</option>
+                            <option value="Facebook">Facebook</option>
+                            <option value="Twitter">Twitter</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="tone">Tone</label>
+                    <div class="select-wrapper">
+                        <select id="tone" name="tone" required>
+                            <option value="">Select a tone</option>
+                            <option value="professional">Professional</option>
+                            <option value="casual">Casual</option>
+                            <option value="formal">Formal</option>
+                            <option value="humorous">Humorous</option>
+                            <option value="inspirational">Inspirational</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-container">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="hashtags" name="hashtags">
+                        <span class="custom-checkbox"></span>
+                        Include hashtags
+                    </label>
+                </div>
+
+                <button type="button" id="generateBtn" class="btn-generate">Generate Content</button>
+            </form>
+
+            <div class="loader" id="loader">
+                <div class="spinner"></div>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="result-container" id="result">
+                <h3>Generated Content</h3>
+                <div class="content-box" id="content-display"></div>
+                <button id="copyBtn" class="btn-copy">Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by AI · Created with Flask</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            const subject = document.getElementById('subject').value;
+            const platform = document.getElementById('platform').value;
+            const tone = document.getElementById('tone').value;
+            const includeHashtags = document.getElementById('hashtags').checked;
+
+            // Form validation
+            if (!subject || !platform || !tone) {
+                document.getElementById('error').textContent = 'Please fill in all required fields.';
+                document.getElementById('error').style.display = 'block';
+                return;
+            }
+
+            // Hide error if it was shown
+            document.getElementById('error').style.display = 'none';
+
+            // Show loader
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('result').style.display = 'none';
+
+            // Call API
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject: subject,
+                    platform: platform,
+                    tone: tone,
+                    includeHashtags: includeHashtags
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loader
+                document.getElementById('loader').style.display = 'none';
+
+                if (data.error) {
+                    // Show error
+                    document.getElementById('error').textContent = data.error;
+                    document.getElementById('error').style.display = 'block';
+                } else {
+                    // Display result
+                    document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
+                    document.getElementById('result').style.display = 'block';
+                }
+            })
+            .catch((error) => {
+                // Hide loader
+                document.getElementById('loader').style.display = 'none';
+
+                // Show error
+                document.getElementById('error').textContent = 'Failed to generate content. Please try again later.';
+                document.getElementById('error').style.display = 'block';
+                console.error('Error:', error);
+            });
+        });
+
+        // Copy to clipboard functionality
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const contentText = document.getElementById('content-display').innerText;
+            navigator.clipboard.writeText(contentText).then(function() {
+                const copyBtn = document.getElementById('copyBtn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+
+                setTimeout(function() {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
