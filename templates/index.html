@@ -54,6 +54,11 @@
                     </label>
                 </div>
 
+             <div class="form-group" id="maxHashtagsContainer">
+                <label for="maxHashtags">Maximum number of hashtags</label>
+                <input type="number" id="maxHashtags" name="maxHashtags" min="1" max="30" value="5">
+            </div>
+
                 <button type="button" id="generateBtn" class="btn-generate">Generate Content</button>
             </form>
 
@@ -76,11 +81,23 @@
     </div>
 
     <script>
+        // Toggle max hashtags field visibility when hashtags checkbox is clicked
+        document.getElementById('hashtags').addEventListener('change', function() {
+            const container = document.getElementById('maxHashtagsContainer');
+            if (this.checked) {
+                container.classList.add('visible');
+            } else {
+                container.classList.remove('visible');
+            }
+        });
+
         document.getElementById('generateBtn').addEventListener('click', function() {
             const subject = document.getElementById('subject').value;
             const platform = document.getElementById('platform').value;
             const tone = document.getElementById('tone').value;
             const includeHashtags = document.getElementById('hashtags').checked;
+            const maxHashtags = includeHashtags ?
+                parseInt(document.getElementById('maxHashtags').value) || 5 : 0;
 
             // Form validation
             if (!subject || !platform || !tone) {
@@ -106,7 +123,8 @@
                     subject: subject,
                     platform: platform,
                     tone: tone,
-                    includeHashtags: includeHashtags
+                    includeHashtags: includeHashtags,
+                    maxHashtags: maxHashtags
                 }),
             })
             .then(response => response.json())

@@ -7,7 +7,7 @@ This project is a Flask-based web application that generates social media conten
 - **AI Provider Options**: Supports Hugging Face, OpenAI, and Ollama APIs for content generation.
 - **Customizable Inputs**: Users can specify the subject, platform, tone, and whether to include hashtags.
 - **Fallback Mechanism**: A local fallback option is available if API calls fail.
-- **Extensible**: Easily add new AI providers or enhance existing functionality.
+- **Extensible**: Add new AI providers or enhance existing functionality.
 
 ## Requirements
 

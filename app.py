@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify
 import os
 import requests
 from dotenv import load_dotenv
+import re
 
 # Load environment variables (optional API keys)
 load_dotenv()
@@ -28,7 +29,8 @@ def generate_content():
     platform = data.get('platform')
     tone = data.get('tone')
     include_hashtags = data.get('includeHashtags')
-    provider = data.get('provider', AI_PROVIDER)  # Allow selection from frontend
+    max_hashtags = data.get('maxHashtags', 5)  # Default to 5 if not specified
+    provider = data.get('provider', AI_PROVIDER)
 
     # Validate inputs
     if not subject or not platform or not tone:
@@ -36,7 +38,7 @@ def generate_content():
 
     try:
         # Construct prompt
-        prompt = construct_prompt(subject, platform, tone, include_hashtags)
+        prompt = construct_prompt(subject, platform, tone, include_hashtags, max_hashtags)
 
         # Generate content using the selected AI provider
         if provider == "huggingface":
@@ -49,6 +51,9 @@ def generate_content():
             # Fallback to local option if API providers fail
             content = generate_with_local_fallback(prompt)
 
+        # Process the response to enforce hashtag limits
+        content = process_response(content, include_hashtags, max_hashtags)
+
         return jsonify({"content": content})
 
     except Exception as e:
@@ -56,9 +61,12 @@ def generate_content():
         return jsonify({"error": "Failed to generate content"}), 500
 
 
-def construct_prompt(subject, platform, tone, include_hashtags):
+def construct_prompt(subject, platform, tone, include_hashtags, max_hashtags=5):
     """Construct a prompt for the AI API based on user inputs."""
-    hashtag_text = "Include relevant hashtags at the end." if include_hashtags else "Do not include any hashtags."
+    hashtag_text = "" if not include_hashtags else f"""
+    Include EXACTLY {max_hashtags} relevant hashtags at the end, not more and not less.
+    Format the hashtags as #word without spaces.
+    """
 
     prompt = f"""
     Create a {platform} post about {subject} using a {tone} tone.
@@ -69,6 +77,25 @@ def construct_prompt(subject, platform, tone, include_hashtags):
     """
 
     return prompt
+
+
+def process_response(content, include_hashtags, max_hashtags):
+    """Process the AI response to enforce the hashtag limit."""
+    if not include_hashtags:
+        # Remove any hashtags that might have been generated
+        return re.sub(r'#\w+', '', content).strip()
+
+    # Extract all hashtags
+    hashtags = re.findall(r'#\w+', content)
+
+    if len(hashtags) <= max_hashtags:
+        return content
+
+    # Too many hashtags, limit them
+    text_without_hashtags = re.sub(r'#\w+', '', content).strip()
+    limited_hashtags = ' '.join(hashtags[:max_hashtags])
+
+    return f"{text_without_hashtags}\n\n{limited_hashtags}"
 
 
 def generate_with_huggingface(prompt):
@@ -146,7 +173,6 @@ def generate_with_local_fallback(prompt):
 
     return f"Generated content for '{prompt}' using local fallback. This is a placeholder response."
 
-# TODO: add limit of hashtags to create
 # TODO: add a description of the post we want to create, to help the AI
 # TODO: add a feedback mechanism to improve the model response
 # TODO: generate more than one post, so the user can choose
