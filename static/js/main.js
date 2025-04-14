@@ -1,5 +1,120 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', function() {
+    // Settings modal functionality
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeBtn = document.querySelector('.close');
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    const aiProviderSelect = document.getElementById('aiProvider');
+    
+    // Provider-specific settings containers
+    const openaiSettings = document.getElementById('openaiSettings');
+    const huggingfaceSettings = document.getElementById('huggingfaceSettings');
+    const ollamaSettings = document.getElementById('ollamaSettings');
+    
+    // Load saved settings if they exist
+    loadSettings();
+    
+    // Show the settings modal when the settings button is clicked
+    settingsBtn.addEventListener('click', function() {
+        settingsModal.style.display = 'block';
+    });
+    
+    // Close the modal when the close button is clicked
+    closeBtn.addEventListener('click', function() {
+        settingsModal.style.display = 'none';
+    });
+    
+    // Close the modal when clicking outside of it
+    window.addEventListener('click', function(event) {
+        if (event.target === settingsModal) {
+            settingsModal.style.display = 'none';
+        }
+    });
+    
+    // Toggle provider-specific settings based on selection
+    aiProviderSelect.addEventListener('change', function() {
+        showProviderSettings(this.value);
+    });
+    
+    // Save settings when the save button is clicked
+    saveSettingsBtn.addEventListener('click', function() {
+        saveSettings();
+        settingsModal.style.display = 'none';
+    });
+    
+    // Function to show the appropriate provider settings
+    function showProviderSettings(provider) {
+        // Hide all provider settings first
+        openaiSettings.style.display = 'none';
+        huggingfaceSettings.style.display = 'none';
+        ollamaSettings.style.display = 'none';
+        
+        // Show the selected provider settings
+        if (provider === 'openai') {
+            openaiSettings.style.display = 'block';
+        } else if (provider === 'huggingface') {
+            huggingfaceSettings.style.display = 'block';
+        } else if (provider === 'ollama') {
+            ollamaSettings.style.display = 'block';
+        }
+    }
+    
+    // Function to save settings to localStorage
+    function saveSettings() {
+        const settings = {
+            provider: aiProviderSelect.value,
+            openai: {
+                apiKey: document.getElementById('openaiApiKey').value,
+                model: document.getElementById('openaiModel').value
+            },
+            huggingface: {
+                apiKey: document.getElementById('hfApiKey').value,
+                model: document.getElementById('hfModel').value
+            },
+            ollama: {
+                url: document.getElementById('ollamaUrl').value,
+                model: document.getElementById('ollamaModel').value
+            }
+        };
+        
+        localStorage.setItem('aiSettings', JSON.stringify(settings));
+    }
+    
+    // Function to load settings from localStorage
+    function loadSettings() {
+        const savedSettings = localStorage.getItem('aiSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            
+            // Set the AI provider
+            aiProviderSelect.value = settings.provider;
+            
+            // Set OpenAI settings
+            if (settings.openai) {
+                document.getElementById('openaiApiKey').value = settings.openai.apiKey || '';
+                document.getElementById('openaiModel').value = settings.openai.model || 'gpt-3.5-turbo';
+            }
+            
+            // Set Hugging Face settings
+            if (settings.huggingface) {
+                document.getElementById('hfApiKey').value = settings.huggingface.apiKey || '';
+                document.getElementById('hfModel').value = settings.huggingface.model || 'mistralai/Mixtral-8x7B-Instruct-v0.1';
+            }
+            
+            // Set Ollama settings
+            if (settings.ollama) {
+                document.getElementById('ollamaUrl').value = settings.ollama.url || 'http://localhost:11434/api/generate';
+                document.getElementById('ollamaModel').value = settings.ollama.model || 'mistral';
+            }
+            
+            // Show the appropriate provider settings
+            showProviderSettings(settings.provider);
+        } else {
+            // Default to Hugging Face if no settings are saved
+            showProviderSettings('huggingface');
+        }
+    }
     // Image upload handling
     const imageUpload = document.getElementById('imageUpload');
     const imagePreview = document.getElementById('imagePreview');
@@ -74,6 +189,25 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('tone', tone);
         formData.append('includeHashtags', includeHashtags);
         formData.append('maxHashtags', maxHashtags);
+        
+        // Get AI provider settings from localStorage
+        const savedSettings = localStorage.getItem('aiSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            formData.append('provider', settings.provider);
+            
+            // Add provider-specific settings
+            if (settings.provider === 'openai' && settings.openai && settings.openai.apiKey) {
+                formData.append('openai_api_key', settings.openai.apiKey);
+                formData.append('openai_model', settings.openai.model || 'gpt-3.5-turbo');
+            } else if (settings.provider === 'huggingface' && settings.huggingface) {
+                formData.append('hf_api_key', settings.huggingface.apiKey || '');
+                formData.append('hf_model', settings.huggingface.model || 'mistralai/Mixtral-8x7B-Instruct-v0.1');
+            } else if (settings.provider === 'ollama' && settings.ollama) {
+                formData.append('ollama_url', settings.ollama.url || 'http://localhost:11434/api/generate');
+                formData.append('ollama_model', settings.ollama.model || 'mistral');
+            }
+        }
 
         // Add image if it exists
         if (uploadedImage) {
