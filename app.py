@@ -5,6 +5,8 @@ import requests
 from dotenv import load_dotenv
 import re
 
+from flask.json import provider
+
 # Load environment variables (optional API keys)
 load_dotenv()
 
@@ -137,6 +139,7 @@ def submit_feedback():
     data = request.json
     original_content = data.get('original_content')
     feedback = data.get('feedback')
+    provider = data.get('provider', AI_PROVIDER)
 
     if not original_content or not feedback:
         return jsonify({"error": "Missing required fields"}), 400
@@ -147,13 +150,105 @@ def submit_feedback():
         print(f"Feedback received: {feedback}")
         print(f"For content: {original_content}")
 
-        # You could also send this feedback to your AI provider
-        # to improve future responses
+        # Extract hashtags from original content
+        original_hashtags = re.findall(r'#\w+', original_content)
 
-        return jsonify({"success": True, "message": "Thank you for your feedback!"})
+        # Check if feedback explicitly mentions changing hashtags
+        change_hashtags = re.search(r'hashtags?|tags?', feedback.lower())
+
+        # Set hashtag instructions based on feedback
+        if change_hashtags:
+            # Find the number of original hashtags to maintain
+            num_hashtags = len(original_hashtags) if original_hashtags else 5
+            hashtag_instructions = f"Create {num_hashtags} new relevant hashtags based on the feedback."
+        else:
+            hashtag_text = " ".join(original_hashtags) if original_hashtags else ""
+            hashtag_instructions = f"Include these exact hashtags at the end: {hashtag_text}"
+
+        # Generate improved content with appropriate hashtag instructions
+        improved_prompt = f"""
+        Original content:
+        {original_content}
+
+        User feedback:
+        {feedback}
+
+        Please generate an improved version of the original content that addresses the user's feedback.
+        Maintain the same tone and platform style as the original.
+        {hashtag_instructions}
+
+        The improved content must preserve all original requirements (subject, platform, tone) while incorporating the feedback.
+        """
+
+        # Use your existing AI model to generate improved content
+        # This assumes you have a function like generate_ai_content() from your original implementation
+        if provider == "huggingface":
+            improved_content = generate_with_huggingface(improved_prompt)
+        elif provider == "ollama":
+            improved_content = generate_with_ollama(improved_prompt)
+        elif provider == "openai":
+            improved_content = generate_with_openai(improved_prompt)
+        else:
+            # Fallback to local option if API providers fail
+            improved_content = generate_with_local_fallback(improved_prompt)
+
+        # Check if the improved content has hashtags
+        new_hashtags = re.findall(r'#\w+', improved_content)
+
+        # If no hashtags found but original had them, append either original or generic ones
+        if not new_hashtags and original_hashtags:
+            if change_hashtags:
+                # Create generic hashtags based on content if feedback requested changes
+                words = re.findall(r'\b\w{5,}\b', improved_content.lower())
+                potential_tags = list(set([word for word in words if
+                                           len(word) > 3 and word not in ['about', 'with', 'that', 'this', 'these',
+                                                                          'those', 'they', 'their', 'there',
+                                                                          'where', 'which', 'while']]))
+
+                # Take up to 5 words to create hashtags
+                new_tags = ["#" + word.capitalize() for word in potential_tags[:5]]
+                if new_tags:
+                    improved_content = f"{improved_content.strip()}\n\n{' '.join(new_tags)}"
+            else:
+                # Append original hashtags if feedback didn't request changes
+                hashtag_text = " ".join(original_hashtags)
+                improved_content = f"{improved_content.strip()}\n\n{hashtag_text}"
+
+        return jsonify({
+            "success": True,
+            "message": "Thank you for your feedback!",
+            "improved_content": improved_content
+        })
     except Exception as e:
         print(f"Error saving feedback: {str(e)}")
         return jsonify({"error": "Failed to save feedback"}), 500
+
+
+def generate_improved_content(original_content, feedback):
+    """Generate improved content based on user feedback."""
+    # Prepare a prompt for the AI to improve the content
+    prompt = f"""
+    Original content:
+    {original_content}
+    
+    User feedback:
+    {feedback}
+    
+    Please generate an improved version of the original content that addresses the user's feedback.
+    """
+
+    # Send to your AI provider and get the improved content
+    if provider == "huggingface":
+        response = generate_with_huggingface(prompt)
+    elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
+        response = generate_with_openai(prompt)
+    elif provider == "ollama":
+        response = generate_with_ollama(prompt)
+    else:
+        # Fallback to local option if API providers fail
+        response = generate_with_local_fallback(prompt)
+
+    return response
 
 
 def generate_with_huggingface(prompt):
@@ -231,7 +326,6 @@ def generate_with_local_fallback(prompt):
 
     return f"Generated content for '{prompt}' using local fallback. This is a placeholder response."
 
-# TODO: add a feedback mechanism to improve the model response
 # TODO: enter the image to be used in the post, and use it in the generation
 
 

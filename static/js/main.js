@@ -107,6 +107,11 @@ function initFeedback() {
     const btnCancelFeedback = document.getElementById('btn-cancel-feedback');
     const feedbackSuccess = document.getElementById('feedback-success');
 
+    // Apply button styling
+    btnFeedback.classList.add('btn', 'btn-secondary');
+    btnSubmitFeedback.classList.add('btn', 'btn-primary');
+    btnCancelFeedback.classList.add('btn', 'btn-secondary');
+
     btnFeedback.addEventListener('click', function() {
         feedbackForm.style.display = 'block';
         btnFeedback.style.display = 'none';
@@ -126,7 +131,16 @@ function initFeedback() {
             return;
         }
 
-        // Submit feedback
+        // Show mini-loader in the feedback section
+        const feedbackLoader = document.createElement('div');
+        feedbackLoader.className = 'loader-small';
+        feedbackLoader.innerHTML = '<div class="spinner-small"></div><p>Improving your content...</p>';
+        feedbackForm.appendChild(feedbackLoader);
+
+        // Disable submit button while processing
+        btnSubmitFeedback.disabled = true;
+
+        // Submit feedback and get improved content
         fetch('/submit-feedback', {
             method: 'POST',
             headers: {
@@ -139,8 +153,22 @@ function initFeedback() {
         })
         .then(response => response.json())
         .then(data => {
-            feedbackForm.style.display = 'none';
-            feedbackSuccess.style.display = 'block';
+            // Remove loader
+            feedbackLoader.remove();
+            btnSubmitFeedback.disabled = false;
+
+            if (data.improved_content) {
+                // Update content with improved version
+                document.getElementById('content-display').innerHTML = data.improved_content.replace(/\n/g, '<br>');
+
+                // Show success message
+                feedbackForm.style.display = 'none';
+                feedbackSuccess.style.display = 'block';
+                feedbackSuccess.textContent = 'Content improved based on your feedback!';
+            } else {
+                feedbackForm.style.display = 'none';
+                feedbackSuccess.style.display = 'block';
+            }
 
             setTimeout(() => {
                 feedbackSuccess.style.display = 'none';
@@ -149,6 +177,9 @@ function initFeedback() {
             }, 3000);
         })
         .catch(error => {
+            // Remove loader
+            feedbackLoader.remove();
+            btnSubmitFeedback.disabled = false;
             console.error('Error submitting feedback:', error);
         });
     });
