@@ -1,6 +1,6 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', function() {
-    // Toggle max hashtags field visibility when hashtags checkbox is clicked
+    // Toggle max hashtags field visibility when hashtag checkbox is clicked
     document.getElementById('hashtags').addEventListener('change', function() {
         const container = document.getElementById('maxHashtagsContainer');
         if (this.checked) {
@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Generate content button click event
     document.getElementById('generateBtn').addEventListener('click', function() {
         const subject = document.getElementById('subject').value;
         const platform = document.getElementById('platform').value;
@@ -77,6 +78,32 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('error').style.display = 'block';
             console.error('Error:', error);
         });
+    });
+
+    // Clear content button click event
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        // Reset form fields
+        document.getElementById('subject').value = '';
+        document.getElementById('description').value = '';
+        document.getElementById('platform').value = '';
+        document.getElementById('tone').value = '';
+
+        // Reset hashtags checkbox and max hashtags
+        document.getElementById('hashtags').checked = false;
+        document.getElementById('maxHashtags').value = '5';
+        document.getElementById('maxHashtagsContainer').classList.remove('visible');
+
+        // Hide results and feedback
+        document.getElementById('result').style.display = 'none';
+        document.getElementById('error').style.display = 'none';
+        document.getElementById('feedback-container').style.display = 'none';
+        document.getElementById('feedback-form').style.display = 'none';
+        document.getElementById('feedback-success').style.display = 'none';
+        document.getElementById('btn-feedback').style.display = 'block';
+        document.getElementById('feedback-text').value = '';
+
+        // Clear content
+        document.getElementById('content-display').innerHTML = '';
     });
 
     // Copy to clipboard functionality
