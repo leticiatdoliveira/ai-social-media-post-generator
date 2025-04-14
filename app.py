@@ -64,55 +64,6 @@ def generate_content():
         return jsonify({"error": "Failed to generate content"}), 500
 
 
-@app.route('/generate_with_inputs', methods=['POST'])
-def generate_with_inputs():
-    """Generate content with additional user inputs."""
-    # Get form data
-    data = request.json
-    subject = data.get('subject')
-    description = data.get('description', '')  # Get description with empty default
-    platform = data.get('platform')
-    tone = data.get('tone')
-    include_hashtags = data.get('includeHashtags')
-    max_hashtags = data.get('maxHashtags', 5)
-    additional_inputs = data.get('additionalInputs', {})
-    original_content = data.get('originalContent', '')
-
-    # Validate inputs
-    if not subject or not platform or not tone:
-        return jsonify({"error": "Missing required fields"}), 400
-
-    try:
-        # Construct a prompt that includes the original content and additional inputs
-        prompt = construct_prompt_with_inputs(subject, description, platform, tone, include_hashtags,
-                                              max_hashtags, additional_inputs, original_content)
-
-        # Generate content using the selected AI provider
-        provider = data.get('provider', AI_PROVIDER)
-
-        if provider == "huggingface":
-            content = generate_with_huggingface(prompt)
-        elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
-            content = generate_with_openai(prompt)
-        elif provider == "ollama":
-            content = generate_with_ollama(prompt)
-        else:
-            # Fallback to local option if API providers fail
-            content = generate_with_local_fallback(prompt)
-
-        # Process the response (no need to check for required inputs now)
-        processed_content = process_response(content, include_hashtags, max_hashtags)["content"]
-
-        return jsonify({
-            "content": processed_content,
-            "required_inputs": []  # No more required inputs
-        })
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({"error": "Failed to generate content"}), 500
-
-
 def construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags=5):
     """Construct a prompt for the AI API based on user inputs."""
     hashtag_text = "" if not include_hashtags else f"""
@@ -125,64 +76,14 @@ def construct_prompt(subject, description, platform, tone, include_hashtags, max
     Additional details about the post: {description}
     """ if description else ""
 
-    # Add instructions to identify missing information
-    details_instruction = """
-    If you need specific information to create a proper post (like product name, features, etc.), 
-    DO NOT use placeholders like [Product Name]. Instead, at the end of your response,
-    include a section titled "REQUIRED INPUTS:" with a list of the specific information you need.
-    For example:
-    REQUIRED INPUTS:
-    - Product name
-    - Key feature 1
-    - Target audience
-    """
-
-    prompt = f"""
-    Create a {platform} post about {subject} using a {tone} tone.
-
-    The post should be appropriate for the {platform} platform in both length and style.
-    {hashtag_text}
-    {details_instruction}
-    Make the content engaging and shareable.
-    """
-
-    return prompt
-
-
-def construct_prompt_with_inputs(subject, description, platform, tone, include_hashtags, max_hashtags,
-                                 additional_inputs,
-                                 original_content):
-    """Construct a prompt that incorporates user-provided inputs."""
-    hashtag_text = "" if not include_hashtags else f"""
-    Include EXACTLY {max_hashtags} relevant hashtags at the end, not more and not less.
-    Format the hashtags as #word without spaces.
-    """
-
-    # Add details from the description if provided
-    description_text = f"""
-    Additional details about the post: {description}
-    """ if description else ""
-
-    # Construct context from additional inputs
-    additional_context = ""
-    if additional_inputs and len(additional_inputs) > 0:
-        additional_context = "Use the following specific information in the post:\n"
-        for key, value in additional_inputs.items():
-            if value:  # Only add non-empty values
-                additional_context += f"- {key}: {value}\n"
-
-    # Construct the prompt
     prompt = f"""
     Create a {platform} post about {subject} using a {tone} tone.
     {description_text}
-    {additional_context}
 
     The post should be appropriate for the {platform} platform in both length and style.
     {hashtag_text}
+    
     Make the content engaging and shareable.
-
-    Here was my previous attempt, but I need you to include the specific information now:
-    "{original_content}"
     """
 
     return prompt
@@ -228,6 +129,31 @@ def process_response(content, include_hashtags, max_hashtags):
         "content": main_content,
         "required_inputs": required_inputs
     }
+
+
+@app.route('/submit-feedback', methods=['POST'])
+def submit_feedback():
+    """Handle user feedback for improving model responses."""
+    data = request.json
+    original_content = data.get('original_content')
+    feedback = data.get('feedback')
+
+    if not original_content or not feedback:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    try:
+        # Here you could store feedback in a database
+        # For now, we'll just log it
+        print(f"Feedback received: {feedback}")
+        print(f"For content: {original_content}")
+
+        # You could also send this feedback to your AI provider
+        # to improve future responses
+
+        return jsonify({"success": True, "message": "Thank you for your feedback!"})
+    except Exception as e:
+        print(f"Error saving feedback: {str(e)}")
+        return jsonify({"error": "Failed to save feedback"}), 500
 
 
 def generate_with_huggingface(prompt):
@@ -305,9 +231,7 @@ def generate_with_local_fallback(prompt):
 
     return f"Generated content for '{prompt}' using local fallback. This is a placeholder response."
 
-# TODO: add a description of the post we want to create, to help the AI
 # TODO: add a feedback mechanism to improve the model response
-# TODO: add a way to save the generated posts
 # TODO: enter the image to be used in the post, and use it in the generation
 
 

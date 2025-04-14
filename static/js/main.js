@@ -31,12 +31,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loader
         document.getElementById('loader').style.display = 'flex';
 
-        // Hide result and clear any previous additional fields
+        // Hide result
         document.getElementById('result').style.display = 'none';
-        const additionalFieldsContainer = document.getElementById('additional-fields');
-        if (additionalFieldsContainer) {
-            additionalFieldsContainer.innerHTML = '';
-        }
+
+        // Hide feedback container
+        document.getElementById('feedback-container').style.display = 'none';
 
         // Call API
         fetch('/generate', {
@@ -62,15 +61,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('error').textContent = data.error;
                 document.getElementById('error').style.display = 'block';
             } else {
-                // Check if additional inputs are required
-                if (data.required_inputs && data.required_inputs.length > 0) {
-                    // Don't show result yet, first collect additional inputs
-                    displayRequiredInputsForm(data.required_inputs, data.content);
-                } else {
-                    // No additional inputs needed, display result
-                    document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
-                    document.getElementById('result').style.display = 'block';
-                }
+                // Always display result, regardless of required_inputs
+                document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
+                document.getElementById('result').style.display = 'block';
+                // Show feedback container only after successful generation
+                document.getElementById('feedback-container').style.display = 'block';
             }
         })
         .catch((error) => {
@@ -99,150 +94,62 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         });
     });
+
+    // Feedback form submission
+    initFeedback();
 });
 
-// Function to display additional input fields
-function displayRequiredInputsForm(requiredInputs, originalContent) {
-    // Create container for additional fields if it doesn't exist
-    let additionalFields = document.getElementById('additional-fields');
-    if (!additionalFields) {
-        additionalFields = document.createElement('div');
-        additionalFields.id = 'additional-fields';
-        document.querySelector('.container').insertBefore(additionalFields, document.getElementById('result'));
-    }
-    additionalFields.innerHTML = '';
+// Add this function outside the DOMContentLoaded event listener
+function initFeedback() {
+    const btnFeedback = document.getElementById('btn-feedback');
+    const feedbackForm = document.getElementById('feedback-form');
+    const btnSubmitFeedback = document.getElementById('btn-submit-feedback');
+    const btnCancelFeedback = document.getElementById('btn-cancel-feedback');
+    const feedbackSuccess = document.getElementById('feedback-success');
 
-    // Hide the original generate button
-    document.getElementById('generateBtn').style.display = 'none';
-
-    // Add title
-    const title = document.createElement('h3');
-    title.textContent = 'Additional Information Needed';
-    additionalFields.appendChild(title);
-
-    // Create form for additional inputs
-    const form = document.createElement('form');
-    form.id = 'additional-inputs-form';
-    form.className = 'form-container';  // Add the same class as your main form for consistent styling
-
-    requiredInputs.forEach((input, index) => {
-        const fieldContainer = document.createElement('div');
-        fieldContainer.className = 'form-group';
-
-        const label = document.createElement('label');
-        label.setAttribute('for', `additional-input-${index}`);
-        label.textContent = input;
-
-        const inputField = document.createElement('input');
-        inputField.type = 'text';
-        inputField.id = `additional-input-${index}`;
-        inputField.name = input;
-        inputField.required = true;
-
-        fieldContainer.appendChild(label);
-        fieldContainer.appendChild(inputField);
-        form.appendChild(fieldContainer);
+    btnFeedback.addEventListener('click', function() {
+        feedbackForm.style.display = 'block';
+        btnFeedback.style.display = 'none';
     });
 
-    // Add submit button
-    const submitBtn = document.createElement('button');
-    submitBtn.type = 'button';
-    submitBtn.className = 'btn-generate';
-    submitBtn.id = 'continueBtn';
-    submitBtn.textContent = 'Continue with Details';
-    submitBtn.onclick = function() {
-        // Validate all required fields are filled
-        const inputs = form.querySelectorAll('input');
-        let isValid = true;
+    btnCancelFeedback.addEventListener('click', function() {
+        feedbackForm.style.display = 'none';
+        btnFeedback.style.display = 'block';
+        document.getElementById('feedback-text').value = '';
+    });
 
-        inputs.forEach(input => {
-            if (!input.value.trim()) {
-                isValid = false;
-                input.style.borderColor = 'var(--error-color)';
-            } else {
-                input.style.borderColor = '';
-            }
+    btnSubmitFeedback.addEventListener('click', function() {
+        const feedback = document.getElementById('feedback-text').value;
+        const content = document.getElementById('content-display').textContent;
+
+        if (!feedback.trim()) {
+            return;
+        }
+
+        // Submit feedback
+        fetch('/submit-feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                original_content: content,
+                feedback: feedback
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            feedbackForm.style.display = 'none';
+            feedbackSuccess.style.display = 'block';
+
+            setTimeout(() => {
+                feedbackSuccess.style.display = 'none';
+                btnFeedback.style.display = 'block';
+                document.getElementById('feedback-text').value = '';
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Error submitting feedback:', error);
         });
-
-        if (isValid) {
-            updateContentWithInputs(originalContent);
-        }
-    };
-
-    form.appendChild(submitBtn);
-    additionalFields.appendChild(form);
-
-    // Hide the result section while collecting inputs
-    document.getElementById('result').style.display = 'none';
-}
-
-// Function to update content with additional inputs
-function updateContentWithInputs(originalContent) {
-    // Get the form containing additional inputs
-    const form = document.getElementById('additional-inputs-form');
-    const inputs = form.querySelectorAll('input');
-
-    // Show loader while processing inputs
-    document.getElementById('loader').style.display = 'flex';
-    document.getElementById('additional-fields').style.display = 'none';
-
-    // Restore the original generate button
-    document.getElementById('generateBtn').style.display = 'block';
-
-    // Collect all input values as key-value pairs
-    const additionalInputs = {};
-    inputs.forEach(input => {
-        const key = input.name.trim();
-        const value = input.value.trim();
-        if (key && value) { // Only include non-empty keys and values
-            additionalInputs[key] = value;
-        }
-    });
-
-    // Get the original form values
-    const subject = document.getElementById('subject').value.trim();
-    const platform = document.getElementById('platform').value.trim();
-    const tone = document.getElementById('tone').value.trim();
-    const includeHashtags = document.getElementById('hashtags').checked;
-    const maxHashtags = includeHashtags ?
-        parseInt(document.getElementById('maxHashtags').value) || 5 : 0;
-
-    // Send the data to the backend
-    fetch('/generate_with_inputs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            subject: subject,
-            platform: platform,
-            tone: tone,
-            includeHashtags: includeHashtags,
-            maxHashtags: maxHashtags,
-            additionalInputs: additionalInputs,
-            originalContent: originalContent
-        }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Hide loader
-        document.getElementById('loader').style.display = 'none';
-
-        if (data.error) {
-            // Show error message
-            document.getElementById('error').textContent = data.error;
-            document.getElementById('error').style.display = 'block';
-        } else {
-            // Display the generated content
-            document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
-            document.getElementById('result').style.display = 'block';
-        }
-    })
-    .catch((error) => {
-        // Hide loader and show error
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('error').textContent = 'Failed to generate content with your inputs. Please try again.';
-        document.getElementById('error').style.display = 'block';
-        console.error('Error:', error);
     });
 }

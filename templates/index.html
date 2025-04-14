@@ -73,12 +73,24 @@
 
             <div class="error" id="error"></div>
 
-            <div id="additional-fields"></div>
-
             <div class="result-container" id="result" style="display: none;">
                 <h3>Generated Content</h3>
                 <div class="content-box" id="content-display"></div>
                 <button id="copyBtn" class="btn-copy">Copy to Clipboard</button>
+            </div>
+
+            <div class="feedback-container" id="feedback-container" style="display: none;">
+                <button id="btn-feedback" class="btn-secondary">Improve this response</button>
+                <div id="feedback-form" style="display: none;">
+                    <textarea id="feedback-text" placeholder="How would you like to improve this response?"></textarea>
+                    <div class="feedback-buttons">
+                        <button id="btn-submit-feedback" class="btn-primary">Submit</button>
+                        <button id="btn-cancel-feedback" class="btn-secondary">Cancel</button>
+                    </div>
+                </div>
+                <div id="feedback-success" class="success" style="display: none;">
+                    Thank you for your feedback!
+                </div>
             </div>
         </div>
 
