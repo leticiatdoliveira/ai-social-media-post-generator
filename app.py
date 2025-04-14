@@ -70,6 +70,7 @@ def generate_with_inputs():
     # Get form data
     data = request.json
     subject = data.get('subject')
+    description = data.get('description', '')  # Get description with empty default
     platform = data.get('platform')
     tone = data.get('tone')
     include_hashtags = data.get('includeHashtags')
@@ -83,7 +84,7 @@ def generate_with_inputs():
 
     try:
         # Construct a prompt that includes the original content and additional inputs
-        prompt = construct_prompt_with_inputs(subject, platform, tone, include_hashtags,
+        prompt = construct_prompt_with_inputs(subject, description, platform, tone, include_hashtags,
                                               max_hashtags, additional_inputs, original_content)
 
         # Generate content using the selected AI provider
@@ -112,12 +113,17 @@ def generate_with_inputs():
         return jsonify({"error": "Failed to generate content"}), 500
 
 
-def construct_prompt(subject, platform, tone, include_hashtags, max_hashtags=5):
+def construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags=5):
     """Construct a prompt for the AI API based on user inputs."""
     hashtag_text = "" if not include_hashtags else f"""
     Include EXACTLY {max_hashtags} relevant hashtags at the end, not more and not less.
     Format the hashtags as #word without spaces.
     """
+
+    # Add details from the description if provided
+    description_text = f"""
+    Additional details about the post: {description}
+    """ if description else ""
 
     # Add instructions to identify missing information
     details_instruction = """
@@ -143,7 +149,8 @@ def construct_prompt(subject, platform, tone, include_hashtags, max_hashtags=5):
     return prompt
 
 
-def construct_prompt_with_inputs(subject, platform, tone, include_hashtags, max_hashtags, additional_inputs,
+def construct_prompt_with_inputs(subject, description, platform, tone, include_hashtags, max_hashtags,
+                                 additional_inputs,
                                  original_content):
     """Construct a prompt that incorporates user-provided inputs."""
     hashtag_text = "" if not include_hashtags else f"""
@@ -151,16 +158,23 @@ def construct_prompt_with_inputs(subject, platform, tone, include_hashtags, max_
     Format the hashtags as #word without spaces.
     """
 
+    # Add details from the description if provided
+    description_text = f"""
+    Additional details about the post: {description}
+    """ if description else ""
+
     # Construct context from additional inputs
     additional_context = ""
-    for key, value in additional_inputs.items():
-        additional_context += f"{key}: {value}\n"
+    if additional_inputs and len(additional_inputs) > 0:
+        additional_context = "Use the following specific information in the post:\n"
+        for key, value in additional_inputs.items():
+            if value:  # Only add non-empty values
+                additional_context += f"- {key}: {value}\n"
 
     # Construct the prompt
     prompt = f"""
     Create a {platform} post about {subject} using a {tone} tone.
-
-    Use the following specific information in the post:
+    {description_text}
     {additional_context}
 
     The post should be appropriate for the {platform} platform in both length and style.
@@ -169,8 +183,6 @@ def construct_prompt_with_inputs(subject, platform, tone, include_hashtags, max_
 
     Here was my previous attempt, but I need you to include the specific information now:
     "{original_content}"
-
-    DO NOT include placeholders or ask for additional information in your response.
     """
 
     return prompt

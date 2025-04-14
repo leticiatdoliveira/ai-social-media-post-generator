@@ -375,3 +375,23 @@ input[type="number"]:focus {
 #additional-fields button {
     margin-top: 10px;
 }
+
+textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 16px;
+    color: var(--text-color);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background-color: #fff;
+    resize: vertical;
+    min-height: 100px;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}

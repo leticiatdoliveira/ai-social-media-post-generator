@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Function to display form for required inputs
+// Function to display additional input fields
 function displayRequiredInputsForm(requiredInputs, originalContent) {
     // Create container for additional fields if it doesn't exist
     let additionalFields = document.getElementById('additional-fields');
@@ -112,6 +112,9 @@ function displayRequiredInputsForm(requiredInputs, originalContent) {
     }
     additionalFields.innerHTML = '';
 
+    // Hide the original generate button
+    document.getElementById('generateBtn').style.display = 'none';
+
     // Add title
     const title = document.createElement('h3');
     title.textContent = 'Additional Information Needed';
@@ -120,6 +123,7 @@ function displayRequiredInputsForm(requiredInputs, originalContent) {
     // Create form for additional inputs
     const form = document.createElement('form');
     form.id = 'additional-inputs-form';
+    form.className = 'form-container';  // Add the same class as your main form for consistent styling
 
     requiredInputs.forEach((input, index) => {
         const fieldContainer = document.createElement('div');
@@ -144,7 +148,8 @@ function displayRequiredInputsForm(requiredInputs, originalContent) {
     const submitBtn = document.createElement('button');
     submitBtn.type = 'button';
     submitBtn.className = 'btn-generate';
-    submitBtn.textContent = 'Generate Content';
+    submitBtn.id = 'continueBtn';
+    submitBtn.textContent = 'Continue with Details';
     submitBtn.onclick = function() {
         // Validate all required fields are filled
         const inputs = form.querySelectorAll('input');
@@ -171,30 +176,38 @@ function displayRequiredInputsForm(requiredInputs, originalContent) {
     document.getElementById('result').style.display = 'none';
 }
 
+// Function to update content with additional inputs
 function updateContentWithInputs(originalContent) {
-    // Get all additional inputs
+    // Get the form containing additional inputs
     const form = document.getElementById('additional-inputs-form');
     const inputs = form.querySelectorAll('input');
 
-    // Show loader again while processing the inputs
+    // Show loader while processing inputs
     document.getElementById('loader').style.display = 'flex';
     document.getElementById('additional-fields').style.display = 'none';
+
+    // Restore the original generate button
+    document.getElementById('generateBtn').style.display = 'block';
 
     // Collect all input values as key-value pairs
     const additionalInputs = {};
     inputs.forEach(input => {
-        additionalInputs[input.name] = input.value.trim();
+        const key = input.name.trim();
+        const value = input.value.trim();
+        if (key && value) { // Only include non-empty keys and values
+            additionalInputs[key] = value;
+        }
     });
 
     // Get the original form values
-    const subject = document.getElementById('subject').value;
-    const platform = document.getElementById('platform').value;
-    const tone = document.getElementById('tone').value;
+    const subject = document.getElementById('subject').value.trim();
+    const platform = document.getElementById('platform').value.trim();
+    const tone = document.getElementById('tone').value.trim();
     const includeHashtags = document.getElementById('hashtags').checked;
     const maxHashtags = includeHashtags ?
         parseInt(document.getElementById('maxHashtags').value) || 5 : 0;
 
-    // Call the API again with all inputs
+    // Send the data to the backend
     fetch('/generate_with_inputs', {
         method: 'POST',
         headers: {
@@ -216,20 +229,18 @@ function updateContentWithInputs(originalContent) {
         document.getElementById('loader').style.display = 'none';
 
         if (data.error) {
-            // Show error
+            // Show error message
             document.getElementById('error').textContent = data.error;
             document.getElementById('error').style.display = 'block';
         } else {
-            // Display the final result
+            // Display the generated content
             document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
             document.getElementById('result').style.display = 'block';
         }
     })
     .catch((error) => {
-        // Hide loader
+        // Hide loader and show error
         document.getElementById('loader').style.display = 'none';
-
-        // Show error
         document.getElementById('error').textContent = 'Failed to generate content with your inputs. Please try again.';
         document.getElementById('error').style.display = 'block';
         console.error('Error:', error);
