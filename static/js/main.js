@@ -1,5 +1,34 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', function() {
+    // Image upload handling
+    const imageUpload = document.getElementById('imageUpload');
+    const imagePreview = document.getElementById('imagePreview');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const removeImageBtn = document.getElementById('removeImage');
+    let uploadedImage = null;
+
+    // Handle image upload and preview
+    imageUpload.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            uploadedImage = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Remove uploaded image
+    removeImageBtn.addEventListener('click', function() {
+        imageUpload.value = '';
+        imagePreview.src = '';
+        imagePreviewContainer.style.display = 'none';
+        uploadedImage = null;
+    });
+
     // Toggle max hashtags field visibility when hashtag checkbox is clicked
     document.getElementById('hashtags').addEventListener('change', function() {
         const container = document.getElementById('maxHashtagsContainer');
@@ -38,19 +67,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide feedback container
         document.getElementById('feedback-container').style.display = 'none';
 
-        // Call API
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('subject', subject);
+        formData.append('platform', platform);
+        formData.append('tone', tone);
+        formData.append('includeHashtags', includeHashtags);
+        formData.append('maxHashtags', maxHashtags);
+
+        // Add image if it exists
+        if (uploadedImage) {
+            formData.append('image', uploadedImage);
+        }
+
+        // Call API with FormData
         fetch('/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                subject: subject,
-                platform: platform,
-                tone: tone,
-                includeHashtags: includeHashtags,
-                maxHashtags: maxHashtags
-            }),
+            body: formData,
         })
         .then(response => response.json())
         .then(data => {
@@ -92,6 +125,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('hashtags').checked = false;
         document.getElementById('maxHashtags').value = '5';
         document.getElementById('maxHashtagsContainer').classList.remove('visible');
+
+        // Reset image upload
+        imageUpload.value = '';
+        imagePreview.src = '';
+        imagePreviewContainer.style.display = 'none';
+        uploadedImage = null;
 
         // Hide results and feedback
         document.getElementById('result').style.display = 'none';

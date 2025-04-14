@@ -1,38 +1,56 @@
-# app.py
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import os
-import requests
-from dotenv import load_dotenv
 import re
+import requests
+from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+from openai import OpenAI
 
-from flask.json import provider
-
-# Load environment variables (optional API keys)
+# Load environment variables
 load_dotenv()
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__)
 
-# AI provider options
-AI_PROVIDER = os.getenv("AI_PROVIDER", "huggingface")  # Default to huggingface if not specified
+# Constants
+AI_PROVIDER = os.getenv("AI_PROVIDER", "huggingface")  # Default to Hugging Face
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Make sure the upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route('/')
 def index():
-    """Render the main page with the form."""
+    """Render the main application page."""
     return render_template('index.html')
 
 
 @app.route('/generate', methods=['POST'])
-def generate_content():
+def generate():
     """Generate content based on user inputs using selected AI API."""
     # Get form data
-    data = request.json
-    subject = data.get('subject')
-    platform = data.get('platform')
-    tone = data.get('tone')
-    include_hashtags = data.get('includeHashtags')
-    max_hashtags = data.get('maxHashtags', 5)  # Default to 5 if not specified
-    provider = data.get('provider', AI_PROVIDER)
+    subject = request.form.get('subject')
+    platform = request.form.get('platform')
+    tone = request.form.get('tone')
+    include_hashtags = request.form.get('includeHashtags') == 'true'
+    max_hashtags = int(request.form.get('maxHashtags', 5))  # Default to 5 if not specified
+    provider = request.form.get('provider', AI_PROVIDER)
+    description = request.form.get('description', '')
+
+    # Handle image upload
+    image_path = None
+    if 'image' in request.files:
+        file = request.files['image']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(file_path)
+            image_path = file_path
 
     # Validate inputs
     if not subject or not platform or not tone:
@@ -40,7 +58,7 @@ def generate_content():
 
     try:
         # Construct prompt
-        prompt = construct_prompt(subject, platform, tone, include_hashtags, max_hashtags)
+        prompt = construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags, image_path)
 
         # Generate content using the selected AI provider
         if provider == "huggingface":
@@ -50,7 +68,7 @@ def generate_content():
         elif provider == "ollama":
             content = generate_with_ollama(prompt)
         else:
-            # Fallback to local option if API providers fail
+            # Fallback to the local option if API providers fail
             content = generate_with_local_fallback(prompt)
 
         # Process the response to enforce hashtag limits and extract required inputs
@@ -66,85 +84,18 @@ def generate_content():
         return jsonify({"error": "Failed to generate content"}), 500
 
 
-def construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags=5):
-    """Construct a prompt for the AI API based on user inputs."""
-    hashtag_text = "" if not include_hashtags else f"""
-    Include EXACTLY {max_hashtags} relevant hashtags at the end, not more and not less.
-    Format the hashtags as #word without spaces.
-    """
-
-    # Add details from the description if provided
-    description_text = f"""
-    Additional details about the post: {description}
-    """ if description else ""
-
-    prompt = f"""
-    Create a {platform} post about {subject} using a {tone} tone.
-    {description_text}
-
-    The post should be appropriate for the {platform} platform in both length and style.
-    {hashtag_text}
-    
-    Make the content engaging and shareable.
-    """
-
-    return prompt
-
-
-def process_response(content, include_hashtags, max_hashtags):
-    """Process the AI response to enforce the hashtag limit and extract required inputs."""
-    # Check if the response contains required inputs section
-    required_inputs = []
-    main_content = content
-
-    # Extract required inputs section if present
-    if "REQUIRED INPUTS:" in content:
-        parts = content.split("REQUIRED INPUTS:")
-        main_content = parts[0].strip()
-
-        # Extract the required inputs list
-        if len(parts) > 1:
-            inputs_text = parts[1].strip()
-            # Extract bullet points or numbered list items
-            for line in inputs_text.split('\n'):
-                line = line.strip()
-                # Remove bullet points, numbers, or dashes
-                cleaned_line = re.sub(r'^[\d\-\*\•\.\s]+', '', line).strip()
-                if cleaned_line:
-                    required_inputs.append(cleaned_line)
-
-    # Process hashtags
-    if not include_hashtags:
-        # Remove any hashtags that might have been generated
-        main_content = re.sub(r'#\w+', '', main_content).strip()
-    else:
-        # Extract all hashtags
-        hashtags = re.findall(r'#\w+', main_content)
-
-        if len(hashtags) > max_hashtags:
-            # Too many hashtags, limit them
-            text_without_hashtags = re.sub(r'#\w+', '', main_content).strip()
-            limited_hashtags = ' '.join(hashtags[:max_hashtags])
-            main_content = f"{text_without_hashtags}\n\n{limited_hashtags}"
-
-    return {
-        "content": main_content,
-        "required_inputs": required_inputs
-    }
-
-
 @app.route('/submit-feedback', methods=['POST'])
 def submit_feedback():
-    """Handle user feedback for improving model responses."""
-    data = request.json
-    original_content = data.get('original_content')
-    feedback = data.get('feedback')
-    provider = data.get('provider', AI_PROVIDER)
-
-    if not original_content or not feedback:
-        return jsonify({"error": "Missing required fields"}), 400
-
+    """Process feedback on generated content and return improved version."""
     try:
+        data = request.json
+        original_content = data.get('original_content', '')
+        feedback = data.get('feedback', '')
+        provider = request.args.get('provider', AI_PROVIDER)
+
+        if not original_content or not feedback:
+            return jsonify({"error": "Missing original content or feedback"}), 400
+
         # Here you could store feedback in a database
         # For now, we'll just log it
         print(f"Feedback received: {feedback}")
@@ -181,7 +132,6 @@ def submit_feedback():
         """
 
         # Use your existing AI model to generate improved content
-        # This assumes you have a function like generate_ai_content() from your original implementation
         if provider == "huggingface":
             improved_content = generate_with_huggingface(improved_prompt)
         elif provider == "ollama":
@@ -224,31 +174,76 @@ def submit_feedback():
         return jsonify({"error": "Failed to save feedback"}), 500
 
 
-def generate_improved_content(original_content, feedback):
-    """Generate improved content based on user feedback."""
-    # Prepare a prompt for the AI to improve the content
-    prompt = f"""
-    Original content:
-    {original_content}
-    
-    User feedback:
-    {feedback}
-    
-    Please generate an improved version of the original content that addresses the user's feedback.
+def construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags=5, image_path=None):
+    """Construct a prompt for the AI API based on user inputs."""
+    hashtag_text = "" if not include_hashtags else f"""
+    Include EXACTLY {max_hashtags} relevant hashtags at the end, not more and not less.
+    Format the hashtags as #word without spaces.
     """
 
-    # Send to your AI provider and get the improved content
-    if provider == "huggingface":
-        response = generate_with_huggingface(prompt)
-    elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
-        response = generate_with_openai(prompt)
-    elif provider == "ollama":
-        response = generate_with_ollama(prompt)
-    else:
-        # Fallback to local option if API providers fail
-        response = generate_with_local_fallback(prompt)
+    # Add details from the description if provided
+    description_text = f"""
+    Additional details about the post: {description}
+    """ if description else ""
 
-    return response
+    # Add image information if provided
+    image_text = ""
+    if image_path:
+        image_text = f"""
+        The post includes an image. Generate content that relates well to this image.
+        Make specific references to what might be in the image based on the subject.
+        Make the text and image connection feel natural and engaging.
+        """
+
+    prompt = f"""
+    Create a {platform} post about {subject} using a {tone} tone.
+    {description_text}
+    {image_text}
+
+    The post should be appropriate for the {platform} platform in both length and style.
+    {hashtag_text}
+
+    Make the content engaging and shareable.
+    """
+
+    return prompt
+
+
+def process_response(content, include_hashtags, max_hashtags):
+    """Process the response from the AI to ensure it meets requirements."""
+    # Check if there are any missing inputs we need to ask for
+    required_inputs = {}
+
+    # Extract hashtags and check count if they were requested
+    if include_hashtags:
+        hashtags = re.findall(r'#\w+', content)
+        if len(hashtags) > max_hashtags:
+            # Too many hashtags, remove excess
+            for i in range(len(hashtags) - max_hashtags):
+                # Find last hashtag and remove it
+                last_hash_pos = content.rfind('#')
+                if last_hash_pos != -1:
+                    # Find the end of this hashtag (space or newline)
+                    end_pos = content.find(' ', last_hash_pos)
+                    if end_pos == -1:  # No space found, might be at the end
+                        end_pos = content.find('\n', last_hash_pos)
+
+                    if end_pos == -1:  # No newline either, must be at the very end
+                        content = content[:last_hash_pos].rstrip()
+                    else:
+                        content = content[:last_hash_pos] + content[end_pos:]
+
+        elif len(hashtags) < max_hashtags and len(hashtags) > 0:
+            # Not enough hashtags, mark as a required input
+            required_inputs["hashtags"] = {
+                "current": len(hashtags),
+                "required": max_hashtags
+            }
+
+    return {
+        "content": content,
+        "required_inputs": required_inputs
+    }
 
 
 def generate_with_huggingface(prompt):
@@ -281,21 +276,41 @@ def generate_with_huggingface(prompt):
         raise Exception(f"Hugging Face API error: {response.text}")
 
 
-def generate_with_openai(prompt):
-    """Generate content using OpenAI API (requires API key)."""
-    from openai import OpenAI
-
+def generate_with_openai(prompt, image_path=None):
+    """Generate content using OpenAI API with image support if available."""
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a social media content specialist."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=300,
-        temperature=0.7
-    )
+    if image_path and "gpt-4" in os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"):
+        # Using GPT-4 Vision to handle the image directly
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+
+        response = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4-vision-preview"),
+            messages=[
+                {"role": "system", "content": "You are a social media content specialist."},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                    ]
+                }
+            ],
+            max_tokens=300,
+            temperature=0.7
+        )
+    else:
+        # Standard GPT model without image
+        response = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
+            messages=[
+                {"role": "system", "content": "You are a social media content specialist."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300,
+            temperature=0.7
+        )
 
     return response.choices[0].message.content.strip()
 
@@ -325,8 +340,6 @@ def generate_with_local_fallback(prompt):
     # This is just a placeholder for a truly free fallback option
 
     return f"Generated content for '{prompt}' using local fallback. This is a placeholder response."
-
-# TODO: enter the image to be used in the post, and use it in the generation
 
 
 if __name__ == '__main__':

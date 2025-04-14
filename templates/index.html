@@ -15,6 +15,18 @@
 
             <form id="contentForm">
                 <div class="form-group">
+                    <label for="imageUpload">Add Image (Optional)</label>
+                    <div class="image-upload-container">
+                        <input type="file" id="imageUpload" accept="image/*" class="input-file">
+                        <div class="image-preview-container" id="imagePreviewContainer">
+                            <img id="imagePreview" src="" alt="Preview">
+                            <button type="button" id="removeImage" class="btn-remove-image">×</button>
+                        </div>
+                    </div>
+                    <p class="help-text">Upload an image to enhance your content generation</p>
+                </div>
+
+                <div class="form-group">
                     <label for="subject">Subject (Theme of the post)</label>
                     <input type="text" id="subject" name="subject" placeholder="e.g. New product launch, Industry trends, etc." required>
                 </div>
