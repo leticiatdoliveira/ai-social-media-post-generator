@@ -51,10 +51,61 @@ def generate_content():
             # Fallback to local option if API providers fail
             content = generate_with_local_fallback(prompt)
 
-        # Process the response to enforce hashtag limits
-        content = process_response(content, include_hashtags, max_hashtags)
+        # Process the response to enforce hashtag limits and extract required inputs
+        processed = process_response(content, include_hashtags, max_hashtags)
 
-        return jsonify({"content": content})
+        return jsonify({
+            "content": processed["content"],
+            "required_inputs": processed["required_inputs"]
+        })
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({"error": "Failed to generate content"}), 500
+
+
+@app.route('/generate_with_inputs', methods=['POST'])
+def generate_with_inputs():
+    """Generate content with additional user inputs."""
+    # Get form data
+    data = request.json
+    subject = data.get('subject')
+    platform = data.get('platform')
+    tone = data.get('tone')
+    include_hashtags = data.get('includeHashtags')
+    max_hashtags = data.get('maxHashtags', 5)
+    additional_inputs = data.get('additionalInputs', {})
+    original_content = data.get('originalContent', '')
+
+    # Validate inputs
+    if not subject or not platform or not tone:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    try:
+        # Construct a prompt that includes the original content and additional inputs
+        prompt = construct_prompt_with_inputs(subject, platform, tone, include_hashtags,
+                                              max_hashtags, additional_inputs, original_content)
+
+        # Generate content using the selected AI provider
+        provider = data.get('provider', AI_PROVIDER)
+
+        if provider == "huggingface":
+            content = generate_with_huggingface(prompt)
+        elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
+            content = generate_with_openai(prompt)
+        elif provider == "ollama":
+            content = generate_with_ollama(prompt)
+        else:
+            # Fallback to local option if API providers fail
+            content = generate_with_local_fallback(prompt)
+
+        # Process the response (no need to check for required inputs now)
+        processed_content = process_response(content, include_hashtags, max_hashtags)["content"]
+
+        return jsonify({
+            "content": processed_content,
+            "required_inputs": []  # No more required inputs
+        })
 
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -68,34 +119,103 @@ def construct_prompt(subject, platform, tone, include_hashtags, max_hashtags=5):
     Format the hashtags as #word without spaces.
     """
 
+    # Add instructions to identify missing information
+    details_instruction = """
+    If you need specific information to create a proper post (like product name, features, etc.), 
+    DO NOT use placeholders like [Product Name]. Instead, at the end of your response,
+    include a section titled "REQUIRED INPUTS:" with a list of the specific information you need.
+    For example:
+    REQUIRED INPUTS:
+    - Product name
+    - Key feature 1
+    - Target audience
+    """
+
     prompt = f"""
     Create a {platform} post about {subject} using a {tone} tone.
 
     The post should be appropriate for the {platform} platform in both length and style.
     {hashtag_text}
+    {details_instruction}
     Make the content engaging and shareable.
     """
 
     return prompt
 
 
+def construct_prompt_with_inputs(subject, platform, tone, include_hashtags, max_hashtags, additional_inputs,
+                                 original_content):
+    """Construct a prompt that incorporates user-provided inputs."""
+    hashtag_text = "" if not include_hashtags else f"""
+    Include EXACTLY {max_hashtags} relevant hashtags at the end, not more and not less.
+    Format the hashtags as #word without spaces.
+    """
+
+    # Construct context from additional inputs
+    additional_context = ""
+    for key, value in additional_inputs.items():
+        additional_context += f"{key}: {value}\n"
+
+    # Construct the prompt
+    prompt = f"""
+    Create a {platform} post about {subject} using a {tone} tone.
+
+    Use the following specific information in the post:
+    {additional_context}
+
+    The post should be appropriate for the {platform} platform in both length and style.
+    {hashtag_text}
+    Make the content engaging and shareable.
+
+    Here was my previous attempt, but I need you to include the specific information now:
+    "{original_content}"
+
+    DO NOT include placeholders or ask for additional information in your response.
+    """
+
+    return prompt
+
+
 def process_response(content, include_hashtags, max_hashtags):
-    """Process the AI response to enforce the hashtag limit."""
+    """Process the AI response to enforce the hashtag limit and extract required inputs."""
+    # Check if the response contains required inputs section
+    required_inputs = []
+    main_content = content
+
+    # Extract required inputs section if present
+    if "REQUIRED INPUTS:" in content:
+        parts = content.split("REQUIRED INPUTS:")
+        main_content = parts[0].strip()
+
+        # Extract the required inputs list
+        if len(parts) > 1:
+            inputs_text = parts[1].strip()
+            # Extract bullet points or numbered list items
+            for line in inputs_text.split('\n'):
+                line = line.strip()
+                # Remove bullet points, numbers, or dashes
+                cleaned_line = re.sub(r'^[\d\-\*\•\.\s]+', '', line).strip()
+                if cleaned_line:
+                    required_inputs.append(cleaned_line)
+
+    # Process hashtags
     if not include_hashtags:
         # Remove any hashtags that might have been generated
-        return re.sub(r'#\w+', '', content).strip()
+        main_content = re.sub(r'#\w+', '', main_content).strip()
+    else:
+        # Extract all hashtags
+        hashtags = re.findall(r'#\w+', main_content)
 
-    # Extract all hashtags
-    hashtags = re.findall(r'#\w+', content)
+        if len(hashtags) > max_hashtags:
+            # Too many hashtags, limit them
+            text_without_hashtags = re.sub(r'#\w+', '', main_content).strip()
+            limited_hashtags = ' '.join(hashtags[:max_hashtags])
+            main_content = f"{text_without_hashtags}\n\n{limited_hashtags}"
 
-    if len(hashtags) <= max_hashtags:
-        return content
-
-    # Too many hashtags, limit them
-    text_without_hashtags = re.sub(r'#\w+', '', content).strip()
-    limited_hashtags = ' '.join(hashtags[:max_hashtags])
-
-    return f"{text_without_hashtags}\n\n{limited_hashtags}"
+    return {
+        "content": main_content,
+        "required_inputs": required_inputs
+    }
 
 
 def generate_with_huggingface(prompt):
@@ -175,8 +295,8 @@ def generate_with_local_fallback(prompt):
 
 # TODO: add a description of the post we want to create, to help the AI
 # TODO: add a feedback mechanism to improve the model response
-# TODO: generate more than one post, so the user can choose
 # TODO: add a way to save the generated posts
+# TODO: enter the image to be used in the post, and use it in the generation
 
 
 if __name__ == '__main__':

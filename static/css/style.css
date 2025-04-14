@@ -341,3 +341,37 @@ input[type="number"]:focus {
     opacity: 1;
     margin-bottom: 24px;
 }
+
+#additional-fields {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+#additional-fields h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+#additional-fields .form-group {
+    margin-bottom: 15px;
+}
+
+#additional-fields label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#additional-fields input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#additional-fields button {
+    margin-top: 10px;
+}
