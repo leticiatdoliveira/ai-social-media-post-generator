@@ -53,6 +53,14 @@ def generate():
     ollama_url = request.form.get('ollama_url', 'http://localhost:11434/api/generate')
     ollama_model = request.form.get('ollama_model', 'mistral')
 
+    print("---- Provider Settings -----")
+    print("OpenAI API Key:", openai_api_key)
+    print("OpenAI Model:", openai_model)
+    print("Hugging Face API Key:", hf_api_key)
+    print("Hugging Face Model:", hf_model)
+    print("Ollama URL:", ollama_url)
+    print("Ollama Model:", ollama_model)
+
     print("---- Testing Inputs -----")
     print("Subject:", subject)
     print("Description:", description)
@@ -80,24 +88,26 @@ def generate():
         # Construct prompt
         prompt = construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags, image_path)
 
+        print(f"------- Generated Prompt: \n{prompt}")
+
         # Generate content using the selected AI provider
-        if provider == "huggingface":
-            # Use provided API key if available, otherwise use environment variable
-            api_key = hf_api_key if hf_api_key else os.getenv("HF_API_KEY", "")
-            content = generate_with_huggingface(prompt, api_key, hf_model)
-        elif provider == "openai":
-            # Use provided API key if available, otherwise use environment variable
-            api_key = openai_api_key if openai_api_key else os.getenv("OPENAI_API_KEY")
-            if api_key:  # Only proceed if we have an API key
-                content = generate_with_openai(prompt, image_path, api_key, openai_model)
-            else:
-                # Fallback if no API key is available
-                content = generate_with_local_fallback(prompt)
-        elif provider == "ollama":
-            content = generate_with_ollama(prompt, ollama_url, ollama_model)
-        else:
-            # Fallback to the local option if API providers fail
-            content = generate_with_local_fallback(prompt)
+        # if provider == "huggingface":
+        #     # Use provided API key if available, otherwise use environment variable
+        #     api_key = hf_api_key if hf_api_key else os.getenv("HF_API_KEY", "")
+        #     content = generate_with_huggingface(prompt, api_key, hf_model)
+        # elif provider == "openai":
+        #     # Use provided API key if available, otherwise use environment variable
+        #     api_key = openai_api_key if openai_api_key else os.getenv("OPENAI_API_KEY")
+        #     if api_key:  # Only proceed if we have an API key
+        #         content = generate_with_openai(prompt, image_path, api_key, openai_model)
+        #     else:
+        #         # Fallback if no API key is available
+        #         content = generate_with_local_fallback(prompt)
+        # elif provider == "ollama":
+        #     content = generate_with_ollama(prompt, ollama_url, ollama_model)
+        # else:
+        #     # Fallback to the local option if API providers fail
+        #     content = generate_with_local_fallback(prompt)
 
         # # Process the response to enforce hashtag limits and extract required inputs
         # processed = process_response(content, include_hashtags, max_hashtags)
@@ -233,13 +243,12 @@ def construct_prompt(subject, description, platform, tone, include_hashtags, max
 
     prompt = f"""
     Create a {platform} post about {subject} using a {tone} tone.
-    {description_text}
-    {image_text}
 
     The post should be appropriate for the {platform} platform in both length and style.
     {hashtag_text}
-
-    Make the content engaging and shareable.
+    {description_text}
+    {image_text}
+    Make sure the post is engaging and relevant to the subject.
     """
 
     return prompt
