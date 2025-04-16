@@ -162,7 +162,10 @@ def generate():
 
         return jsonify({
             "content": processed["content"],
-            "required_inputs": processed["required_inputs"]
+            "required_inputs": processed["required_inputs"],
+            "model_switched": processed.get("model_switched", False),
+            "model_used": processed.get("model_used", ""),
+            "original_model": processed.get("original_model", "")
         })
 
     except Exception as e:
