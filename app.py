@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 import os
 import re
+import json
 import requests
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -12,9 +13,11 @@ load_dotenv()
 app = Flask(__name__)
 
 # Constants
-AI_PROVIDER = os.getenv("AI_PROVIDER", "huggingface")  # Default to Hugging Face
+AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")  # Default to OpenAI
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+OPENAI_CHAT_COMPLETION_MODEL = "gpt-3.5-turbo"
+
 
 # Make sure the upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -38,9 +41,17 @@ def generate():
     platform = request.form.get('platform')
     tone = request.form.get('tone')
     include_hashtags = request.form.get('includeHashtags') == 'true'
-    max_hashtags = int(request.form.get('maxHashtags', 5))  # Default to 5 if not specified
+    max_hashtags = int(request.form.get('maxHashtags', 5))  
     provider = request.form.get('provider', AI_PROVIDER)
     description = request.form.get('description', '')
+    
+    # Get provider-specific settings
+    openai_api_key = request.form.get('openai_api_key')
+    openai_model = request.form.get('openai_model', 'gpt-3.5-turbo')
+    hf_api_key = request.form.get('hf_api_key')
+    hf_model = request.form.get('hf_model', 'mistralai/Mixtral-8x7B-Instruct-v0.1')
+    ollama_url = request.form.get('ollama_url', 'http://localhost:11434/api/generate')
+    ollama_model = request.form.get('ollama_model', 'mistral')
 
     print("---- Testing Inputs -----")
     print("Subject:", subject)
@@ -69,18 +80,24 @@ def generate():
         # Construct prompt
         prompt = construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags, image_path)
 
-        print(f"----- Constructed Prompt: \n{prompt}")
-
-        # # Generate content using the selected AI provider
-        # if provider == "huggingface":
-        #     content = generate_with_huggingface(prompt)
-        # elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
-        #     content = generate_with_openai(prompt)
-        # elif provider == "ollama":
-        #     content = generate_with_ollama(prompt)
-        # else:
-        #     # Fallback to the local option if API providers fail
-        #     content = generate_with_local_fallback(prompt)
+        # Generate content using the selected AI provider
+        if provider == "huggingface":
+            # Use provided API key if available, otherwise use environment variable
+            api_key = hf_api_key if hf_api_key else os.getenv("HF_API_KEY", "")
+            content = generate_with_huggingface(prompt, api_key, hf_model)
+        elif provider == "openai":
+            # Use provided API key if available, otherwise use environment variable
+            api_key = openai_api_key if openai_api_key else os.getenv("OPENAI_API_KEY")
+            if api_key:  # Only proceed if we have an API key
+                content = generate_with_openai(prompt, image_path, api_key, openai_model)
+            else:
+                # Fallback if no API key is available
+                content = generate_with_local_fallback(prompt)
+        elif provider == "ollama":
+            content = generate_with_ollama(prompt, ollama_url, ollama_model)
+        else:
+            # Fallback to the local option if API providers fail
+            content = generate_with_local_fallback(prompt)
 
         # # Process the response to enforce hashtag limits and extract required inputs
         # processed = process_response(content, include_hashtags, max_hashtags)
@@ -103,6 +120,14 @@ def submit_feedback():
         original_content = data.get('original_content', '')
         feedback = data.get('feedback', '')
         provider = request.args.get('provider', AI_PROVIDER)
+        
+        # Get provider settings from query parameters if available
+        openai_api_key = request.args.get('openai_api_key')
+        openai_model = request.args.get('openai_model', 'gpt-3.5-turbo')
+        hf_api_key = request.args.get('hf_api_key')
+        hf_model = request.args.get('hf_model', 'mistralai/Mixtral-8x7B-Instruct-v0.1')
+        ollama_url = request.args.get('ollama_url', 'http://localhost:11434/api/generate')
+        ollama_model = request.args.get('ollama_model', 'mistral')
 
         if not original_content or not feedback:
             return jsonify({"error": "Missing original content or feedback"}), 400
@@ -257,14 +282,10 @@ def process_response(content, include_hashtags, max_hashtags):
     }
 
 
-def generate_with_huggingface(prompt):
+def generate_with_huggingface(prompt, api_key="", model_id="mistralai/Mixtral-8x7B-Instruct-v0.1"):
     """Generate content using Hugging Face's Inference API (free tier)."""
     # Using Hugging Face's API - free for many models
-    # Optional API key can be added to .env for increased rate limits
-    api_key = os.getenv("HF_API_KEY", "")
-
-    # Choose a good free model - mistralai/Mixtral-8x7B-Instruct-v0.1 is powerful and available for free
-    model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    # Optional API key can be added for increased rate limits
     api_url = f"https://api-inference.huggingface.co/models/{model_id}"
 
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
@@ -287,17 +308,18 @@ def generate_with_huggingface(prompt):
         raise Exception(f"Hugging Face API error: {response.text}")
 
 
-def generate_with_openai(prompt, image_path=None):
+def generate_with_openai(prompt, image_path=None, api_key=None, model="gpt-3.5-turbo"):
     """Generate content using OpenAI API with image support if available."""
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = OpenAI(api_key=api_key)
 
-    if image_path and "gpt-4" in os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"):
+    if image_path and "gpt-4" in model:
         # Using GPT-4 Vision to handle the image directly
+        import base64
         with open(image_path, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode('utf-8')
 
         response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4-vision-preview"),
+            model="gpt-4-vision-preview" if "vision" not in model else model,
             messages=[
                 {"role": "system", "content": "You are a social media content specialist."},
                 {
@@ -314,7 +336,7 @@ def generate_with_openai(prompt, image_path=None):
     else:
         # Standard GPT model without image
         response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
+            model=model,
             messages=[
                 {"role": "system", "content": "You are a social media content specialist."},
                 {"role": "user", "content": prompt}
@@ -326,13 +348,12 @@ def generate_with_openai(prompt, image_path=None):
     return response.choices[0].message.content.strip()
 
 
-def generate_with_ollama(prompt):
+def generate_with_ollama(prompt, ollama_url="http://localhost:11434/api/generate", model="mistral"):
     """Generate content using Ollama API (local or remote)."""
     # Ollama can be self-hosted for free: https://ollama.ai/
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 
     payload = {
-        "model": "mistral",  # Can be changed based on models you have pulled
+        "model": model,  # Can be changed based on models you have pulled
         "prompt": f"You are a social media content specialist. {prompt}",
         "stream": False
     }
@@ -352,6 +373,13 @@ def generate_with_local_fallback(prompt):
 
     return f"Generated content for '{prompt}' using local fallback. This is a placeholder response."
 
+    # TODO: buy openai credits
+    # TODO: check how to pass context to model and review it in code (embedded etc)
+    # TODO: config app to pass account to be retrieved as context (form field)
+    # TODO: implement instagram data retrieving
+    # TODO: check and deploy social media content draft
+    # TODO: how to deploy
 
 if __name__ == '__main__':
     app.run(debug=True)
+

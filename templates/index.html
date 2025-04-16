@@ -7,11 +7,17 @@
     <title>Social Media Content Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <div class="page-container">
         <div class="container">
-            <h1>Social Media Content Generator</h1>
+            <div class="header-container">
+                <h1>Social Media Content Generator</h1>
+                <button id="settingsBtn" class="btn-icon" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
 
             <form id="contentForm">
                 <div class="form-group">
@@ -104,6 +110,78 @@
                 </div>
                 <div id="feedback-success" class="success" style="display: none;">
                     Thank you for your feedback!
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>AI Model Settings</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="settingsForm">
+                        <div class="form-group">
+                            <label for="aiProvider">AI Provider</label>
+                            <div class="select-wrapper">
+                                <select id="aiProvider" name="aiProvider">
+                                    <option value="huggingface">Hugging Face (Default)</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="ollama">Ollama (Local)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="openaiSettings" class="provider-settings">
+                            <div class="form-group">
+                                <label for="openaiApiKey">OpenAI API Key</label>
+                                <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-...">
+                            </div>
+                            <div class="form-group">
+                                <label for="openaiModel">Model</label>
+                                <div class="select-wrapper">
+                                    <select id="openaiModel" name="openaiModel">
+                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                        <option value="gpt-4">GPT-4</option>
+                                        <option value="gpt-4-vision-preview">GPT-4 Vision (for images)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="huggingfaceSettings" class="provider-settings">
+                            <div class="form-group">
+                                <label for="hfApiKey">Hugging Face API Key (Optional)</label>
+                                <input type="password" id="hfApiKey" name="hfApiKey" placeholder="hf_...">
+                                <p class="help-text">Optional: Increases rate limits</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="hfModel">Model</label>
+                                <div class="select-wrapper">
+                                    <select id="hfModel" name="hfModel">
+                                        <option value="mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral-8x7B-Instruct</option>
+                                        <option value="meta-llama/Llama-2-7b-chat-hf">Llama-2-7b-chat</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="ollamaSettings" class="provider-settings">
+                            <div class="form-group">
+                                <label for="ollamaUrl">Ollama URL</label>
+                                <input type="text" id="ollamaUrl" name="ollamaUrl" placeholder="http://localhost:11434/api/generate">
+                            </div>
+                            <div class="form-group">
+                                <label for="ollamaModel">Model</label>
+                                <input type="text" id="ollamaModel" name="ollamaModel" placeholder="mistral" value="mistral">
+                                <p class="help-text">Model must be pulled in Ollama first</p>
+                            </div>
+                        </div>
+                        
+                        <button type="button" id="saveSettingsBtn" class="btn-primary">Save Settings</button>
+                    </form>
                 </div>
             </div>
         </div>
