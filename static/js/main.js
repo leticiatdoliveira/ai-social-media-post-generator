@@ -343,15 +343,37 @@ function initFeedback() {
         btnSubmitFeedback.disabled = true;
 
         // Submit feedback and get improved content
+        // Get AI provider settings from localStorage
+        const savedSettings = localStorage.getItem('aiSettings');
+        let requestBody = {
+            original_content: content,
+            feedback: feedback
+        };
+        
+        // Add provider-specific settings to the request body
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            requestBody.provider = settings.provider;
+            
+            // Add provider-specific settings
+            if (settings.provider === 'openai' && settings.openai && settings.openai.apiKey) {
+                requestBody.openai_api_key = settings.openai.apiKey;
+                requestBody.openai_model = settings.openai.model || 'gpt-3.5-turbo';
+            } else if (settings.provider === 'huggingface' && settings.huggingface) {
+                requestBody.hf_api_key = settings.huggingface.apiKey || '';
+                requestBody.hf_model = settings.huggingface.model || 'mistralai/Mixtral-8x7B-Instruct-v0.1';
+            } else if (settings.provider === 'ollama' && settings.ollama) {
+                requestBody.ollama_url = settings.ollama.url || 'http://localhost:11434/api/generate';
+                requestBody.ollama_model = settings.ollama.model || 'mistral';
+            }
+        }
+        
         fetch('/submit-feedback', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                original_content: content,
-                feedback: feedback
-            }),
+            body: JSON.stringify(requestBody),
         })
         .then(response => response.json())
         .then(data => {

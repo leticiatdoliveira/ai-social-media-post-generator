@@ -129,15 +129,15 @@ def submit_feedback():
         data = request.json
         original_content = data.get('original_content', '')
         feedback = data.get('feedback', '')
-        provider = request.args.get('provider', AI_PROVIDER)
+        provider = data.get('provider', AI_PROVIDER)
 
-        # Get provider-specific settings
-        openai_api_key = request.form.get('openai_api_key')
-        openai_model = request.form.get('openai_model', 'gpt-3.5-turbo')
-        hf_api_key = request.form.get('hf_api_key')
-        hf_model = request.form.get('hf_model', 'mistralai/Mixtral-8x7B-Instruct-v0.1')
-        ollama_url = request.form.get('ollama_url', 'http://localhost:11434/api/generate')
-        ollama_model = request.form.get('ollama_model', 'mistral')
+        # Get provider-specific settings from the JSON data
+        openai_api_key = data.get('openai_api_key')
+        openai_model = data.get('openai_model', 'gpt-3.5-turbo')
+        hf_api_key = data.get('hf_api_key')
+        hf_model = data.get('hf_model', 'mistralai/Mixtral-8x7B-Instruct-v0.1')
+        ollama_url = data.get('ollama_url', 'http://localhost:11434/api/generate')
+        ollama_model = data.get('ollama_model', 'mistral')
 
         print("---- Feedback provider Settings -----")
         print("OpenAI API Key:", openai_api_key)
