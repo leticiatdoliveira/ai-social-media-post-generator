@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Generate content button click event
     document.getElementById('generateBtn').addEventListener('click', function() {
         const subject = document.getElementById('subject').value;
+        const description = document.getElementById('description').value;
         const platform = document.getElementById('platform').value;
         const tone = document.getElementById('tone').value;
         const includeHashtags = document.getElementById('hashtags').checked;
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create FormData for file upload
         const formData = new FormData();
         formData.append('subject', subject);
+        formData.append('description', description);
         formData.append('platform', platform);
         formData.append('tone', tone);
         formData.append('includeHashtags', includeHashtags);

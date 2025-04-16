@@ -42,6 +42,14 @@ def generate():
     provider = request.form.get('provider', AI_PROVIDER)
     description = request.form.get('description', '')
 
+    print("---- Testing Inputs -----")
+    print("Subject:", subject)
+    print("Description:", description)
+    print("Platform:", platform)
+    print("Tone:", tone)
+    print("Include Hashtags:", include_hashtags)
+    print("Max Hashtags:", max_hashtags)
+
     # Handle image upload
     image_path = None
     if 'image' in request.files:
@@ -51,6 +59,7 @@ def generate():
             file_path = os.path.join(UPLOAD_FOLDER, filename)
             file.save(file_path)
             image_path = file_path
+            print("Image Path:", image_path)
 
     # Validate inputs
     if not subject or not platform or not tone:
@@ -60,24 +69,26 @@ def generate():
         # Construct prompt
         prompt = construct_prompt(subject, description, platform, tone, include_hashtags, max_hashtags, image_path)
 
-        # Generate content using the selected AI provider
-        if provider == "huggingface":
-            content = generate_with_huggingface(prompt)
-        elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
-            content = generate_with_openai(prompt)
-        elif provider == "ollama":
-            content = generate_with_ollama(prompt)
-        else:
-            # Fallback to the local option if API providers fail
-            content = generate_with_local_fallback(prompt)
+        print(f"----- Constructed Prompt: \n{prompt}")
 
-        # Process the response to enforce hashtag limits and extract required inputs
-        processed = process_response(content, include_hashtags, max_hashtags)
+        # # Generate content using the selected AI provider
+        # if provider == "huggingface":
+        #     content = generate_with_huggingface(prompt)
+        # elif provider == "openai" and os.getenv("OPENAI_API_KEY"):
+        #     content = generate_with_openai(prompt)
+        # elif provider == "ollama":
+        #     content = generate_with_ollama(prompt)
+        # else:
+        #     # Fallback to the local option if API providers fail
+        #     content = generate_with_local_fallback(prompt)
 
-        return jsonify({
-            "content": processed["content"],
-            "required_inputs": processed["required_inputs"]
-        })
+        # # Process the response to enforce hashtag limits and extract required inputs
+        # processed = process_response(content, include_hashtags, max_hashtags)
+
+        # return jsonify({
+        #     "content": processed["content"],
+        #     "required_inputs": processed["required_inputs"]
+        # })
 
     except Exception as e:
         print(f"Error: {str(e)}")
