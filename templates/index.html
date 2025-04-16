@@ -21,7 +21,7 @@
 
             <form id="contentForm">
                 <div class="form-group">
-                    <label for="imageUpload">Add Image (Optional)</label>
+                    <label for="imageUpload">Add Image <i>(Optional)</i></label>
                     <div class="image-upload-container">
                         <input type="file" id="imageUpload" accept="image/*" class="input-file">
                         <div class="image-preview-container" id="imagePreviewContainer">
@@ -33,12 +33,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="subject">Subject (Theme of the post)</label>
+                    <label for="subject">Subject</label>
                     <input type="text" id="subject" name="subject" placeholder="e.g. New product launch, Industry trends, etc." required>
                 </div>
 
                 <div class="form-group">
-                    <label for="description">Description (Details about what you want in your post)</label>
+                    <label for="description">Description <i>(Optional)</i></label>
                     <textarea id="description" name="description" placeholder="Describe what you want in your post, e.g., key points to include, target audience, purpose of the post, etc." rows="4"></textarea>
                 </div>
 
@@ -118,65 +118,23 @@
         <div id="settingsModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>AI Model Settings</h2>
+                    <h2>OpenAI Settings</h2>
                     <span class="close">&times;</span>
                 </div>
                 <div class="modal-body">
                     <form id="settingsForm">
                         <div class="form-group">
-                            <label for="aiProvider">AI Provider</label>
+                            <label for="openaiApiKey">OpenAI API Key</label>
+                            <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-...">
+                        </div>
+                        <div class="form-group">
+                            <label for="openaiModel">Model</label>
                             <div class="select-wrapper">
-                                <select id="aiProvider" name="aiProvider">
-                                    <option value="openai">OpenAI (Default)</option>
-                                    <option value="huggingface">Hugging Face</option>
-                                    <option value="ollama">Ollama (Local)</option>
+                                <select id="openaiModel" name="openaiModel">
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                    <option value="gpt-4">GPT-4</option>
+                                    <option value="gpt-4-vision-preview">GPT-4 Vision (for images)</option>
                                 </select>
-                            </div>
-                        </div>
-                        
-                        <div id="openaiSettings" class="provider-settings">
-                            <div class="form-group">
-                                <label for="openaiApiKey">OpenAI API Key</label>
-                                <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-...">
-                            </div>
-                            <div class="form-group">
-                                <label for="openaiModel">Model</label>
-                                <div class="select-wrapper">
-                                    <select id="openaiModel" name="openaiModel">
-                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                        <option value="gpt-4">GPT-4</option>
-                                        <option value="gpt-4-vision-preview">GPT-4 Vision (for images)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="huggingfaceSettings" class="provider-settings">
-                            <div class="form-group">
-                                <label for="hfApiKey">Hugging Face API Key (Optional)</label>
-                                <input type="password" id="hfApiKey" name="hfApiKey" placeholder="hf_...">
-                                <p class="help-text">Optional: Increases rate limits</p>
-                            </div>
-                            <div class="form-group">
-                                <label for="hfModel">Model</label>
-                                <div class="select-wrapper">
-                                    <select id="hfModel" name="hfModel">
-                                        <option value="mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral-8x7B-Instruct</option>
-                                        <option value="meta-llama/Llama-2-7b-chat-hf">Llama-2-7b-chat</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="ollamaSettings" class="provider-settings">
-                            <div class="form-group">
-                                <label for="ollamaUrl">Ollama URL</label>
-                                <input type="text" id="ollamaUrl" name="ollamaUrl" placeholder="http://localhost:11434/api/generate">
-                            </div>
-                            <div class="form-group">
-                                <label for="ollamaModel">Model</label>
-                                <input type="text" id="ollamaModel" name="ollamaModel" placeholder="mistral" value="mistral">
-                                <p class="help-text">Model must be pulled in Ollama first</p>
                             </div>
                         </div>
                         

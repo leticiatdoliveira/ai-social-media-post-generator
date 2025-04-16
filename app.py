@@ -3,6 +3,7 @@ import os
 import re
 import json
 import requests
+import base64
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -22,6 +23,7 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")  # Default to OpenAI
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 OPENAI_CHAT_COMPLETION_MODEL = "gpt-3.5-turbo"
+OPENAI_VISION_MODEL = "gpt-4.1-mini"
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHUNK_SIZE = 1000
@@ -109,18 +111,10 @@ def generate():
     # Get provider-specific settings
     openai_api_key = request.form.get('openai_api_key')
     openai_model = request.form.get('openai_model', 'gpt-3.5-turbo')
-    hf_api_key = request.form.get('hf_api_key')
-    hf_model = request.form.get('hf_model', 'mistralai/Mixtral-8x7B-Instruct-v0.1')
-    ollama_url = request.form.get('ollama_url', 'http://localhost:11434/api/generate')
-    ollama_model = request.form.get('ollama_model', 'mistral')
 
     print("---- Provider Settings -----")
     print("OpenAI API Key:", openai_api_key)
     print("OpenAI Model:", openai_model)
-    print("Hugging Face API Key:", hf_api_key)
-    print("Hugging Face Model:", hf_model)
-    print("Ollama URL:", ollama_url)
-    print("Ollama Model:", ollama_model)
 
     print("---- Testing Inputs -----")
     print("Subject:", subject)
@@ -152,26 +146,19 @@ def generate():
         print(f"------- Generated Prompt: \n{prompt}")
 
         # Generate content using the selected AI provider
-        if provider == "huggingface":
-            # Use provided API key if available, otherwise use environment variable
-            api_key = hf_api_key if hf_api_key else os.getenv("HF_API_KEY", "")
-            content = generate_with_huggingface(prompt, api_key, hf_model)
-        elif provider == "openai":
-            # Use provided API key if available, otherwise use environment variable
-            api_key = openai_api_key if openai_api_key else os.getenv("OPENAI_API_KEY")
-            if api_key:  # Only proceed if we have an API key
-                content = generate_with_openai(prompt, image_path, api_key, openai_model)
-            else:
-                # Fallback if no API key is available
-                content = generate_with_local_fallback(prompt)
-        elif provider == "ollama":
-            content = generate_with_ollama(prompt, ollama_url, ollama_model)
-        else:
-            # Fallback to the local option if API providers fail
-            content = generate_with_local_fallback(prompt)
+        api_key = openai_api_key if openai_api_key else os.getenv("OPENAI_API_KEY")
+        if api_key:
+                response_data = generate_with_openai(prompt, image_path, api_key, openai_model)
+                content = response_data["content"]
 
         # Process the response to enforce hashtag limits and extract required inputs
         processed = process_response(content, include_hashtags, max_hashtags)
+        
+        # Add model information to the response
+        if "model_switched" in response_data and response_data["model_switched"]:
+            processed["model_switched"] = response_data["model_switched"]
+            processed["model_used"] = response_data["model_used"]
+            processed["original_model"] = response_data["original_model"]
 
         return jsonify({
             "content": processed["content"],
@@ -195,18 +182,10 @@ def submit_feedback():
         # Get provider-specific settings from the JSON data
         openai_api_key = data.get('openai_api_key')
         openai_model = data.get('openai_model', 'gpt-3.5-turbo')
-        hf_api_key = data.get('hf_api_key')
-        hf_model = data.get('hf_model', 'mistralai/Mixtral-8x7B-Instruct-v0.1')
-        ollama_url = data.get('ollama_url', 'http://localhost:11434/api/generate')
-        ollama_model = data.get('ollama_model', 'mistral')
 
         print("---- Feedback provider Settings -----")
         print("OpenAI API Key:", openai_api_key)
         print("OpenAI Model:", openai_model)
-        print("Hugging Face API Key:", hf_api_key)
-        print("Hugging Face Model:", hf_model)
-        print("Ollama URL:", ollama_url)
-        print("Ollama Model:", ollama_model)
 
         if not original_content or not feedback:
             return jsonify({"error": "Missing original content or feedback"}), 400
@@ -246,16 +225,8 @@ def submit_feedback():
         print(f"------- Improved Prompt: \n{improved_prompt}")
 
         # Use your existing AI model to generate improved content
-        if provider == "huggingface":
-            improved_content = generate_with_huggingface(improved_prompt, hf_api_key, hf_model)
-        elif provider == "ollama":
-            improved_content = generate_with_ollama(improved_prompt, ollama_url, ollama_model)
-        elif provider == "openai":
-            improved_content = generate_with_openai(improved_prompt, None, openai_api_key, openai_model)
-        else:
-            # Fallback to local option if API providers fail
-            improved_content = generate_with_local_fallback(improved_prompt)
-
+        improved_content = generate_with_openai(improved_prompt, None, openai_api_key, openai_model)
+    
         # Check if the improved content has hashtags
         new_hashtags = re.findall(r'#\w+', improved_content)
 
@@ -349,32 +320,6 @@ def process_response(content, include_hashtags, max_hashtags):
     }
 
 
-def generate_with_huggingface(prompt, api_key="", model_id="mistralai/Mixtral-8x7B-Instruct-v0.1"):
-    """Generate content using Hugging Face's Inference API (free tier)."""
-    # Using Hugging Face's API - free for many models
-    # Optional API key can be added for increased rate limits
-    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
-
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-
-    # Format prompt for instruction-based models
-    payload = {
-        "inputs": f"<s>[INST] {prompt} [/INST]",
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.7,
-            "return_full_text": False
-        }
-    }
-
-    response = requests.post(api_url, headers=headers, json=payload)
-
-    if response.status_code == 200:
-        return response.json()[0]["generated_text"].strip()
-    else:
-        raise Exception(f"Hugging Face API error: {response.text}")
-
-
 def build_message(prompt : str, base64_image : str, retrieved_chunks : List[str]) -> List[dict]:
     """Build a message for the OpenAI API based on the prompt and image."""
     system_prompt = (
@@ -410,9 +355,18 @@ def generate_with_openai(prompt, image_path=None, api_key=None, model="gpt-3.5-t
 
     # Build the message for the API
     base64_image = None
+    model_switched = False
+    original_model = model
+    
     if image_path:
         with open(image_path, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        # Use a vision-capable model when an image is provided
+        if model not in ["gpt-4-mini", "gpt-4o"]:
+            model_switched = True
+            model = OPENAI_VISION_MODEL  # Default to vision model when image is provided
+            print(f"Switching to vision-capable model: {model}")
+    
     messages = build_message(prompt, base64_image, retrieved_chunks)
 
     # Generate response
@@ -424,39 +378,14 @@ def generate_with_openai(prompt, image_path=None, api_key=None, model="gpt-3.5-t
 
     print(f"-------- Model used: {model}")
 
-    return response.choices[0].message.content.strip()
-
-
-def generate_with_ollama(prompt, ollama_url="http://localhost:11434/api/generate", model="mistral"):
-    """Generate content using Ollama API (local or remote)."""
-    # Ollama can be self-hosted for free: https://ollama.ai/
-
-    payload = {
-        "model": model,  # Can be changed based on models you have pulled
-        "prompt": f"You are a social media content specialist. {prompt}",
-        "stream": False
+    # Return the content along with model information
+    return {
+        "content": response.choices[0].message.content.strip(),
+        "model_used": model,
+        "model_switched": model_switched,
+        "original_model": original_model if model_switched else None
     }
 
-    response = requests.post(ollama_url, json=payload)
-
-    if response.status_code == 200:
-        return response.json()["response"].strip()
-    else:
-        raise Exception(f"Ollama API error: {response.text}")
-
-
-def generate_with_local_fallback(prompt):
-    """Simple fallback method if all API methods fail."""
-    # Extremely basic generation with predefined templates
-    # This is just a placeholder for a truly free fallback option
-
-    return f"Generated content for '{prompt}' using local fallback. This is a placeholder response."
-
-    # TODO: check how to pass context to model and review it in code (embedded etc)
-    # TODO: config app to pass account to be retrieved as context (form field)
-    # TODO: implement instagram data retrieving
-    # TODO: check and deploy social media content draft
-    # TODO: how to deploy
 
 if __name__ == '__main__':
     app.run(debug=True)

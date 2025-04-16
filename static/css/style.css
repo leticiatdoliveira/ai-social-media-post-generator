@@ -245,6 +245,27 @@ select {
     margin-top: 30px;
     display: none;
     animation: fadeIn 0.5s;
+    position: relative;
+}
+
+/* Model switch notification */
+.model-switch-notification {
+    background-color: #f8f9fa;
+    border-left: 4px solid #17a2b8;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    transition: opacity 0.5s ease;
+}
+
+.model-switch-notification i {
+    margin-right: 8px;
+    color: #17a2b8;
+    font-size: 16px;
 }
 
 @keyframes fadeIn {

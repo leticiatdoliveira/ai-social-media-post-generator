@@ -5,12 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsModal = document.getElementById('settingsModal');
     const closeBtn = document.querySelector('.close');
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-    const aiProviderSelect = document.getElementById('aiProvider');
-    
-    // Provider-specific settings containers
-    const openaiSettings = document.getElementById('openaiSettings');
-    const huggingfaceSettings = document.getElementById('huggingfaceSettings');
-    const ollamaSettings = document.getElementById('ollamaSettings');
     
     // Load saved settings if they exist
     loadSettings();
@@ -32,49 +26,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Toggle provider-specific settings based on selection
-    aiProviderSelect.addEventListener('change', function() {
-        showProviderSettings(this.value);
-    });
-    
     // Save settings when the save button is clicked
     saveSettingsBtn.addEventListener('click', function() {
         saveSettings();
         settingsModal.style.display = 'none';
     });
     
-    // Function to show the appropriate provider settings
-    function showProviderSettings(provider) {
-        // Hide all provider settings first
-        openaiSettings.style.display = 'none';
-        huggingfaceSettings.style.display = 'none';
-        ollamaSettings.style.display = 'none';
-        
-        // Show the selected provider settings
-        if (provider === 'openai') {
-            openaiSettings.style.display = 'block';
-        } else if (provider === 'huggingface') {
-            huggingfaceSettings.style.display = 'block';
-        } else if (provider === 'ollama') {
-            ollamaSettings.style.display = 'block';
-        }
-    }
-    
     // Function to save settings to localStorage
     function saveSettings() {
         const settings = {
-            provider: aiProviderSelect.value,
+            provider: 'openai', // Always use OpenAI
             openai: {
                 apiKey: document.getElementById('openaiApiKey').value,
                 model: document.getElementById('openaiModel').value
-            },
-            huggingface: {
-                apiKey: document.getElementById('hfApiKey').value,
-                model: document.getElementById('hfModel').value
-            },
-            ollama: {
-                url: document.getElementById('ollamaUrl').value,
-                model: document.getElementById('ollamaModel').value
             }
         };
         
@@ -87,32 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
             
-            // Set the AI provider
-            aiProviderSelect.value = settings.provider;
-            
-            // Set OpenAI settings
-            if (settings.openai) {
-                document.getElementById('openaiApiKey').value = settings.openai.apiKey || '';
-                document.getElementById('openaiModel').value = settings.openai.model || 'gpt-3.5-turbo';
-            }
-            
-            // Set Hugging Face settings
-            if (settings.huggingface) {
-                document.getElementById('hfApiKey').value = settings.huggingface.apiKey || '';
-                document.getElementById('hfModel').value = settings.huggingface.model || 'mistralai/Mixtral-8x7B-Instruct-v0.1';
-            }
-            
-            // Set Ollama settings
-            if (settings.ollama) {
-                document.getElementById('ollamaUrl').value = settings.ollama.url || 'http://localhost:11434/api/generate';
-                document.getElementById('ollamaModel').value = settings.ollama.model || 'mistral';
-            }
-            
-            // Show the appropriate provider settings
-            showProviderSettings(settings.provider);
-        } else {
-            // Default to Hugging Face if no settings are saved
-            showProviderSettings('huggingface');
+            // Load OpenAI settings
+            document.getElementById('openaiApiKey').value = settings.openai?.apiKey || '';
+            document.getElementById('openaiModel').value = settings.openai?.model || 'gpt-3.5-turbo';
         }
     }
     // Image upload handling
@@ -192,23 +133,14 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('includeHashtags', includeHashtags);
         formData.append('maxHashtags', maxHashtags);
         
-        // Get AI provider settings from localStorage
+        // Get OpenAI settings from localStorage
         const savedSettings = localStorage.getItem('aiSettings');
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
-            formData.append('provider', settings.provider);
+            formData.append('provider', 'openai'); // Always use OpenAI
             
-            // Add provider-specific settings
-            if (settings.provider === 'openai' && settings.openai && settings.openai.apiKey) {
-                formData.append('openai_api_key', settings.openai.apiKey);
-                formData.append('openai_model', settings.openai.model || 'gpt-3.5-turbo');
-            } else if (settings.provider === 'huggingface' && settings.huggingface) {
-                formData.append('hf_api_key', settings.huggingface.apiKey || '');
-                formData.append('hf_model', settings.huggingface.model || 'mistralai/Mixtral-8x7B-Instruct-v0.1');
-            } else if (settings.provider === 'ollama' && settings.ollama) {
-                formData.append('ollama_url', settings.ollama.url || 'http://localhost:11434/api/generate');
-                formData.append('ollama_model', settings.ollama.model || 'mistral');
-            }
+            formData.append('openai_api_key', settings.openai?.apiKey || '');
+            formData.append('openai_model', settings.openai?.model || 'gpt-3.5-turbo');
         }
 
         // Add image if it exists
@@ -231,6 +163,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('error').textContent = data.error;
                 document.getElementById('error').style.display = 'block';
             } else {
+                // Check if model was switched and show notification
+                if (data.model_switched) {
+                    const notification = document.createElement('div');
+                    notification.className = 'model-switch-notification';
+                    notification.innerHTML = `<i class="fas fa-info-circle"></i> Image detected: Automatically switched to ${data.model_used} for better image analysis.`;
+                    
+                    // Add notification before the content
+                    const resultContainer = document.getElementById('result');
+                    resultContainer.insertBefore(notification, resultContainer.firstChild);
+                    
+                    // Auto-dismiss after 10 seconds
+                    setTimeout(() => {
+                        notification.style.opacity = '0';
+                        setTimeout(() => notification.remove(), 500);
+                    }, 10000);
+                }
+                
                 // Always display result, regardless of required_inputs
                 document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
                 document.getElementById('result').style.display = 'block';
@@ -350,22 +299,12 @@ function initFeedback() {
             feedback: feedback
         };
         
-        // Add provider-specific settings to the request body
+        // Add OpenAI settings to the request body
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
-            requestBody.provider = settings.provider;
-            
-            // Add provider-specific settings
-            if (settings.provider === 'openai' && settings.openai && settings.openai.apiKey) {
-                requestBody.openai_api_key = settings.openai.apiKey;
-                requestBody.openai_model = settings.openai.model || 'gpt-3.5-turbo';
-            } else if (settings.provider === 'huggingface' && settings.huggingface) {
-                requestBody.hf_api_key = settings.huggingface.apiKey || '';
-                requestBody.hf_model = settings.huggingface.model || 'mistralai/Mixtral-8x7B-Instruct-v0.1';
-            } else if (settings.provider === 'ollama' && settings.ollama) {
-                requestBody.ollama_url = settings.ollama.url || 'http://localhost:11434/api/generate';
-                requestBody.ollama_model = settings.ollama.model || 'mistral';
-            }
+            requestBody.provider = 'openai'; // Always use OpenAI
+            requestBody.openai_api_key = settings.openai?.apiKey || '';
+            requestBody.openai_model = settings.openai?.model || 'gpt-3.5-turbo';
         }
         
         fetch('/submit-feedback', {
