@@ -190,7 +190,7 @@ def submit_feedback():
         elif provider == "ollama":
             improved_content = generate_with_ollama(improved_prompt, ollama_url, ollama_model)
         elif provider == "openai":
-            improved_content = generate_with_openai(improved_prompt, openai_api_key, openai_model)
+            improved_content = generate_with_openai(improved_prompt, None, openai_api_key, openai_model)
         else:
             # Fallback to local option if API providers fail
             improved_content = generate_with_local_fallback(improved_prompt)
