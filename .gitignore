@@ -13,3 +13,6 @@ __pycache__/
 
 # Uploads
 uploads/
+
+# Files 
+*.pdf
