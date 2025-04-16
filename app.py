@@ -6,6 +6,11 @@ import requests
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from openai import OpenAI
+from typing import List
+from pathlib import Path
+import faiss
+import numpy as np
+import pdfplumber
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +23,8 @@ UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 OPENAI_CHAT_COMPLETION_MODEL = "gpt-3.5-turbo"
 
+EMBEDDING_MODEL = "text-embedding-3-small"
+CHUNK_SIZE = 1000
 
 # Make sure the upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -25,6 +32,60 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    """Extract text from a PDF file using pdfplumber."""
+    full_text = ""
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            full_text += page.extract_text()
+    return full_text
+
+
+def load_and_split_file(file_path : str, chunk_size=CHUNK_SIZE, overlap=50) -> List[str]:
+    """Load a file and split it into chunks for embedding."""
+    if file_path.endswith('.pdf'):
+        text = extract_text_from_pdf(file_path)
+    else:
+        text = Path(file_path).read_text(encoding="utf-8")
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), chunk_size - overlap):
+        chunk = ' '.join(words[i:i + chunk_size])
+        chunks.append(chunk)
+    return chunks
+
+
+def get_embedding(text: str, model: str = EMBEDDING_MODEL) -> List[float]:
+    """Get the embedding for a given text."""
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.embeddings.create(input=[text], model=model)
+    return response.data[0].embedding
+
+
+def build_vector_index(chunks: List[str]):
+    """Build a vector index for the given chunks."""
+    # Process each chunk individually to get embeddings
+    vectors = [get_embedding(chunk) for chunk in chunks]
+    vectors = np.array(vectors)
+    index = faiss.IndexFlatL2(len(vectors[0]))
+    index.add(vectors)
+    return index, vectors, chunks
+
+
+def retrieve_relevant_chunks(query: str, index: faiss.IndexFlatL2, vectors: np.array, chunks: List[str], top_k=5):
+    """Retrieve the top k chunks that are most relevant to the query."""
+    query_vector = get_embedding(query)
+    _, indices = index.search(np.array([query_vector]).astype("float32"), top_k)
+    return [chunks[i] for i in indices[0]]
+
+
+def embed_file_context(file_path):
+    """Embed the context of a file for retrieval."""
+    chunks = load_and_split_file(file_path)
+    index, vectors, chunks = build_vector_index(chunks)
+    return index, vectors, chunks
 
 
 @app.route('/')
@@ -314,44 +375,54 @@ def generate_with_huggingface(prompt, api_key="", model_id="mistralai/Mixtral-8x
         raise Exception(f"Hugging Face API error: {response.text}")
 
 
+def build_message(prompt : str, base64_image : str, retrieved_chunks : List[str]) -> List[dict]:
+    """Build a message for the OpenAI API based on the prompt and image."""
+    system_prompt = (
+        "You are a skilled social media content creator, capable of adapting tone, "
+        "style, and format to different platforms based on user instructions.\n\n"
+        "Refer to this company's funnel strategy playbook to guide your response:\n\n"
+        + "\n---\n".join(retrieved_chunks)
+    )
+
+    if base64_image:
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+            ]}
+        ]
+    else:
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
+
+
 def generate_with_openai(prompt, image_path=None, api_key=None, model="gpt-3.5-turbo"):
     """Generate content using OpenAI API with image support if available."""
+    # Create client to text generation
     client = OpenAI(api_key=api_key)
 
-    if image_path and "gpt-4" in model:
-        # Using GPT-4 Vision to handle the image directly
-        import base64
+    # Load context file and extract relevant chunks
+    index, vectors, chunks = embed_file_context("context.pdf")
+    retrieved_chunks = retrieve_relevant_chunks(prompt, index, vectors, chunks)
+
+    # Build the message for the API
+    base64_image = None
+    if image_path:
         with open(image_path, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+    messages = build_message(prompt, base64_image, retrieved_chunks)
 
-        response = client.chat.completions.create(
-            model="gpt-4-vision-preview" if "vision" not in model else model,
-            messages=[
-                {"role": "system", "content": "You are a social media content specialist."},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-                    ]
-                }
-            ],
-            max_tokens=300,
-            temperature=0.7
-        )
-    else:
-        # Standard GPT model without image
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a social media content specialist."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,
-            temperature=0.7
-        )
+    # Generate response
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=500
+    )
 
-    print(f"Model used: {model}")
+    print(f"-------- Model used: {model}")
 
     return response.choices[0].message.content.strip()
 
