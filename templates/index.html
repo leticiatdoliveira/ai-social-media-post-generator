@@ -40,6 +40,27 @@
                     <textarea id="description" name="description" placeholder="Describe what you want in your post, e.g., key points to include, target audience, purpose of the post, etc." rows="4"></textarea>
                 </div>
 
+                <!-- Add URL scraping section -->
+                <div class="form-group">
+                    <div class="checkbox-container">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableScraping" name="enableScraping">
+                            <span class="custom-checkbox"></span>
+                            Include content from a website
+                        </label>
+                    </div>
+                    <div id="scrapingContainer" class="form-group" style="display: none;">
+                        <div class="form-group">
+                            <label for="scrapeUrl">Website URL</label>
+                            <input type="url" id="scrapeUrl" name="scrapeUrl" placeholder="https://example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="scrapePrompt">Scraping Instructions <i>(What to extract from the website)</i></label>
+                            <textarea id="scrapePrompt" name="scrapePrompt" placeholder="E.g., Extract key product features, company mission, or recent news" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="platform">Social Media Platform</label>
                     <div class="select-wrapper">
@@ -67,47 +88,47 @@
                     </div>
                 </div>
 
-                <div class="form-group checkbox-container">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="hashtags" name="hashtags">
-                        <span class="custom-checkbox"></span>
-                        Include hashtags
-                    </label>
-                </div>
-
-                <div class="form-group" id="maxHashtagsContainer">
-                    <label for="maxHashtags">Maximum number of hashtags</label>
-                    <input type="number" id="maxHashtags" name="maxHashtags" min="1" max="30" value="5">
+                <div class="form-group">
+                    <div class="checkbox-container">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="hashtags" name="hashtags">
+                            <span class="custom-checkbox"></span>
+                            Include hashtags
+                        </label>
+                    </div>
+                    <div id="maxHashtagsContainer" class="form-group">
+                        <label for="maxHashtags">Maximum number of hashtags</label>
+                        <input type="number" id="maxHashtags" name="maxHashtags" min="1" max="30" value="5">
+                    </div>
                 </div>
 
                 <button type="button" id="generateBtn" class="btn-generate">Generate Content</button>
-
-                <button id="resetBtn" class="btn btn-secondary">Reset</button>
+                <button type="button" id="resetBtn" class="btn-secondary">Clear Form</button>
             </form>
 
-            <div class="loader" id="loader">
+            <div id="loader" class="loader">
                 <div class="spinner"></div>
             </div>
 
-            <div class="error" id="error"></div>
+            <div id="error" class="error"></div>
 
-            <div class="result-container" id="result" style="display: none;">
+            <div id="result" class="result-container">
                 <h3>Generated Content</h3>
-                <div class="content-box" id="content-display"></div>
+                <div id="content-display" class="content-box"></div>
                 <button id="copyBtn" class="btn-copy">Copy to Clipboard</button>
-            </div>
 
-            <div class="feedback-container" id="feedback-container" style="display: none;">
-                <button id="btn-feedback" class="btn btn-secondary">Improve this response</button>
-                <div id="feedback-form" style="display: none;">
-                    <textarea id="feedback-text" placeholder="How would you like to improve this response?"></textarea>
-                    <div class="feedback-buttons">
-                        <button id="btn-submit-feedback" class="btn btn-primary">Submit</button>
-                        <button id="btn-cancel-feedback" class="btn btn-secondary">Cancel</button>
+                <div id="feedback-container" class="feedback-container">
+                    <button id="btn-feedback">Provide Feedback to Improve</button>
+                    
+                    <div id="feedback-form" style="display: none;">
+                        <textarea id="feedback-text" placeholder="What would you like to improve about this content?"></textarea>
+                        <div class="feedback-buttons">
+                            <button id="btn-submit-feedback">Submit Feedback</button>
+                            <button id="btn-cancel-feedback">Cancel</button>
+                        </div>
                     </div>
-                </div>
-                <div id="feedback-success" class="success" style="display: none;">
-                    Thank you for your feedback!
+                    
+                    <div id="feedback-success" class="success" style="display: none;"></div>
                 </div>
             </div>
         </div>
@@ -122,6 +143,10 @@
                 <div class="modal-body">
                     <form id="settingsForm">
                         <div class="form-group">
+                            <label for="scrapegraphApiKey">ScrapeGraphAI API Key</label>
+                            <input type="password" id="scrapegraphApiKey" name="scrapegraphApiKey" placeholder="sgai-...">
+                        </div>
+                        <div class="form-group">
                             <label for="openaiApiKey">OpenAI API Key</label>
                             <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-...">
                         </div>
@@ -130,8 +155,8 @@
                             <div class="select-wrapper">
                                 <select id="openaiModel" name="openaiModel">
                                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
                                     <option value="gpt-4">GPT-4</option>
-                                    <option value="gpt-4-vision-preview">GPT-4 Vision (for images)</option>
                                 </select>
                             </div>
                         </div>

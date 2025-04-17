@@ -1,15 +1,12 @@
 from typing import List, Optional
 from flask import Flask, request, jsonify, render_template
 import os
-import tempfile
 from dotenv import load_dotenv
-from agents import Agent, ModelSettings, Runner, FileSearchTool, Tool
+from agents import Agent, ModelSettings, Runner, FileSearchTool
 from openai import OpenAI
-from openai.types.responses.response import ToolChoice
 from werkzeug.utils import secure_filename
+import scrape
 
-MODEL_SOCIAL_MEDIA = 'gpt-4o-mini'
-MODEL_COMPANY_INSIGHTS = 'gpt-4o-mini'
 
 # Load environment variables
 load_dotenv()
@@ -65,12 +62,14 @@ def create_vector_store_from_file(file_paths: List[str]):
 
 def extract_user_settings() -> dict:
     """Extract user settings from the form data."""
-    api_key = request.form.get('apiKey')
-    model = request.form.get('model')
+    openai_api_key = request.form.get('openai_api_key')
+    openai_model = request.form.get('openai_model')
+    scrapegraph_api_key = request.form.get('scrapegraph_api_key')
 
     user_settings = {
-        "api_key": api_key,
-        "model": model
+        "openai_api_key": openai_api_key,
+        "openai_model": openai_model,
+        "scrapegraph_api_key": scrapegraph_api_key
     }
     return user_settings
 
@@ -84,6 +83,11 @@ def extract_user_inputs() -> dict:
     tone = request.form.get('tone')
     include_hashtags = request.form.get('includeHashtags') == 'true'
     max_hashtags = request.form.get('maxHashtags', 5)
+    
+    # Extract scraping data
+    enable_scraping = request.form.get('enableScraping') == 'true'
+    scrape_url = request.form.get('scrapeUrl', '')
+    scrape_prompt = request.form.get('scrapePrompt', 'Extract the main content from this page')
 
     # Prepare user input for the agent
     user_input = {
@@ -92,12 +96,15 @@ def extract_user_inputs() -> dict:
         "platform": platform,
         "tone": tone,
         "includeHashtags": include_hashtags,
-        "maxHashtags": max_hashtags
+        "maxHashtags": max_hashtags,
+        "enableScraping": enable_scraping,
+        "scrapeUrl": scrape_url,
+        "scrapePrompt": scrape_prompt
     }
     return user_input
 
 
-def create_prompt(user_input: dict) -> str:
+def create_prompt(user_input: dict, scraped_content: str = None) -> str:
     """Create a prompt for the social media assistant agent."""
     prompt = f"""
         Generate a content brief for a social media post based on the following user input:
@@ -106,6 +113,14 @@ def create_prompt(user_input: dict) -> str:
         Platform: {user_input["platform"]}
         Tone: {user_input["tone"]}
     """
+    
+    # Add scraped content if available
+    if scraped_content:
+        prompt += f"""
+        Use the following information scraped from a website:
+        {scraped_content}
+        """
+    
     if user_input["includeHashtags"]:
         prompt += f"""
             Include {user_input["maxHashtags"]} relevant hashtags for the post.
@@ -142,7 +157,7 @@ def create_company_insights_agent(context_file_path: Optional[str] = None):
             Your job is to extract insights about the company from the provided document.
             Your goal is to provide useful information to the marketing team.
             """,
-            model=MODEL_COMPANY_INSIGHTS,
+            model=extract_user_settings().openai_model,
             tools=[
                 FileSearchTool(vector_store_ids=[vector_store.id])
             ],
@@ -159,10 +174,33 @@ def create_company_insights_agent(context_file_path: Optional[str] = None):
 async def generate_content():
     """Generate social media content based on form data."""
     try:
-        # Extract user input from the form data
-        user_input = extract_user_inputs()
-        user_prompt = create_prompt(user_input)
         user_settings = extract_user_settings()
+        user_input = extract_user_inputs()
+        
+        # Initialize scraped content
+        scraped_content = None
+        
+        # Perform scraping if enabled
+        if user_input["enableScraping"] and user_input["scrapeUrl"]:
+            try:
+                scrapegraph_api_key = user_settings.get("scrapegraph_api_key")
+                if not scrapegraph_api_key:
+                    return jsonify({"error": "ScrapeGraphAI API key is required for website scraping"})
+                
+                # Initialize the scraper client
+                client = scrape.init_client(scrapegraph_api_key)
+                
+                # Scrape the website
+                scraped_content = scrape.scrape_website(
+                    client=client,
+                    url=user_input["scrapeUrl"],
+                    prompt=user_input["scrapePrompt"]
+                )
+                print(f"----- Content scraped from {user_input['scrapeUrl']}")
+            except Exception as e:
+                return jsonify({"error": f"Failed to scrape website: {str(e)}"})
+                
+        user_prompt = create_prompt(user_input, scraped_content)
         
         # Check if a context file was uploaded
         context_file_path = None
@@ -195,7 +233,7 @@ async def generate_content():
                 Each brief should guide the marketing team by suggesting the right format, giving creative design directions, and summarizing the key message.
                 Adapt your suggestions to the user's goal, audience, and tone. If details are missing, make reasonable assumptions.
             """,
-            model=MODEL_SOCIAL_MEDIA,
+            model=user_settings.openai_model,
             tools=tools,
             model_settings=ModelSettings(
                 tool_choice=tool_choice,

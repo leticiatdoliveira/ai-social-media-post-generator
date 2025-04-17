@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', function() {
             openai: {
                 apiKey: document.getElementById('openaiApiKey').value,
                 model: document.getElementById('openaiModel').value
+            },
+            scrapegraph: {
+                apiKey: document.getElementById('scrapegraphApiKey').value,
             }
         };
         
@@ -52,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const settings = JSON.parse(savedSettings);
             
             // Load OpenAI settings
+            document.getElementById('scrapegraphApiKey').value = settings.scrapegraph?.apiKey || '';
             document.getElementById('openaiApiKey').value = settings.openai?.apiKey || '';
             document.getElementById('openaiModel').value = settings.openai?.model || 'gpt-3.5-turbo';
         }
@@ -86,6 +90,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Toggle scraping fields visibility when scraping checkbox is clicked
+    document.getElementById('enableScraping').addEventListener('change', function() {
+        const container = document.getElementById('scrapingContainer');
+        if (this.checked) {
+            container.style.display = 'block';
+        } else {
+            container.style.display = 'none';
+        }
+    });
+
     // Generate content button click event
     document.getElementById('generateBtn').addEventListener('click', function() {
         const subject = document.getElementById('subject').value;
@@ -115,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide feedback container
         document.getElementById('feedback-container').style.display = 'none';
 
-        // Create FormData for file upload
+        // Create FormData for submission
         const formData = new FormData();
         formData.append('subject', subject);
         formData.append('description', description);
@@ -132,11 +146,32 @@ document.addEventListener('DOMContentLoaded', function() {
             
             formData.append('openai_api_key', settings.openai?.apiKey || '');
             formData.append('openai_model', settings.openai?.model || 'gpt-3.5-turbo');
+
+            formData.append('scrapegraph_api_key', settings.scrapegraph?.apiKey || '');
         }
 
         // Add context file if it exists
         if (uploadedContextFile) {
             formData.append('context_file', uploadedContextFile);
+        }
+        
+        // Add scraping fields to form data
+        const enableScraping = document.getElementById('enableScraping').checked;
+        formData.append('enableScraping', enableScraping);
+        
+        if (enableScraping) {
+            const scrapeUrl = document.getElementById('scrapeUrl').value;
+            const scrapePrompt = document.getElementById('scrapePrompt').value;
+            
+            if (!scrapeUrl) {
+                document.getElementById('error').textContent = 'Please enter a URL to scrape.';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('loader').style.display = 'none';
+                return;
+            }
+            
+            formData.append('scrapeUrl', scrapeUrl);
+            formData.append('scrapePrompt', scrapePrompt || 'Extract the main content from this page');
         }
 
         // Call API with FormData
@@ -190,6 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
         fileNameDisplay.textContent = '';
         fileNameDisplay.classList.remove('visible');
         uploadedContextFile = null;
+        
+        // Reset scraping fields
+        document.getElementById('enableScraping').checked = false;
+        document.getElementById('scrapeUrl').value = '';
+        document.getElementById('scrapePrompt').value = '';
+        document.getElementById('scrapingContainer').style.display = 'none';
 
         // Hide results and feedback
         document.getElementById('result').style.display = 'none';
