@@ -126,9 +126,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide result
         document.getElementById('result').style.display = 'none';
 
-        // Hide feedback container
-        document.getElementById('feedback-container').style.display = 'none';
-
         // Create FormData for submission
         const formData = new FormData();
         formData.append('subject', subject);
@@ -136,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('platform', platform);
         formData.append('tone', tone);
         formData.append('includeHashtags', includeHashtags);
-        formData.append('maxHashtags', maxHashtags);
+        formData.append('maxHashtags', maxHashtags.toString());
         
         // Get OpenAI settings from localStorage
         const savedSettings = localStorage.getItem('aiSettings');
@@ -192,8 +189,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Always display result, regardless of required_inputs
                 document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
                 document.getElementById('result').style.display = 'block';
-                // Show feedback container only after successful generation
-                document.getElementById('feedback-container').style.display = 'block';
             }
         })
         .catch((error) => {
@@ -232,14 +227,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('scrapePrompt').value = '';
         document.getElementById('scrapingContainer').style.display = 'none';
 
-        // Hide results and feedback
+        // Hide results
         document.getElementById('result').style.display = 'none';
         document.getElementById('error').style.display = 'none';
-        document.getElementById('feedback-container').style.display = 'none';
-        document.getElementById('feedback-form').style.display = 'none';
-        document.getElementById('feedback-success').style.display = 'none';
-        document.getElementById('btn-feedback').style.display = 'block';
-        document.getElementById('feedback-text').value = '';
 
         // Clear content
         document.getElementById('content-display').innerHTML = '';
@@ -260,105 +250,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         });
     });
-
-    // Feedback form submission
-    initFeedback();
 });
-
-// Add this function outside the DOMContentLoaded event listener
-function initFeedback() {
-    const btnFeedback = document.getElementById('btn-feedback');
-    const feedbackForm = document.getElementById('feedback-form');
-    const btnSubmitFeedback = document.getElementById('btn-submit-feedback');
-    const btnCancelFeedback = document.getElementById('btn-cancel-feedback');
-    const feedbackSuccess = document.getElementById('feedback-success');
-
-    // Apply button styling
-    btnFeedback.classList.add('btn', 'btn-secondary');
-    btnSubmitFeedback.classList.add('btn', 'btn-primary');
-    btnCancelFeedback.classList.add('btn', 'btn-secondary');
-
-    btnFeedback.addEventListener('click', function() {
-        feedbackForm.style.display = 'block';
-        btnFeedback.style.display = 'none';
-    });
-
-    btnCancelFeedback.addEventListener('click', function() {
-        feedbackForm.style.display = 'none';
-        btnFeedback.style.display = 'block';
-        document.getElementById('feedback-text').value = '';
-    });
-
-    btnSubmitFeedback.addEventListener('click', function() {
-        const feedback = document.getElementById('feedback-text').value;
-        const content = document.getElementById('content-display').textContent;
-
-        if (!feedback.trim()) {
-            return;
-        }
-
-        // Show mini-loader in the feedback section
-        const feedbackLoader = document.createElement('div');
-        feedbackLoader.className = 'loader-small';
-        feedbackLoader.innerHTML = '<div class="spinner-small"></div><p>Improving your content...</p>';
-        feedbackForm.appendChild(feedbackLoader);
-
-        // Disable submit button while processing
-        btnSubmitFeedback.disabled = true;
-
-        // Submit feedback and get improved content
-        // Get AI provider settings from localStorage
-        const savedSettings = localStorage.getItem('aiSettings');
-        let requestBody = {
-            original_content: content,
-            feedback: feedback
-        };
-        
-        // Add OpenAI settings to the request body
-        if (savedSettings) {
-            const settings = JSON.parse(savedSettings);
-            requestBody.provider = 'openai'; // Always use OpenAI
-            requestBody.openai_api_key = settings.openai?.apiKey || '';
-            requestBody.openai_model = settings.openai?.model || 'gpt-3.5-turbo';
-        }
-        
-        fetch('/submit-feedback', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Remove loader
-            feedbackLoader.remove();
-            btnSubmitFeedback.disabled = false;
-
-            if (data.improved_content) {
-                // Update content with improved version
-                document.getElementById('content-display').innerHTML = data.improved_content.replace(/\n/g, '<br>');
-
-                // Show success message
-                feedbackForm.style.display = 'none';
-                feedbackSuccess.style.display = 'block';
-                feedbackSuccess.textContent = 'Content improved based on your feedback!';
-            } else {
-                feedbackForm.style.display = 'none';
-                feedbackSuccess.style.display = 'block';
-            }
-
-            setTimeout(() => {
-                feedbackSuccess.style.display = 'none';
-                btnFeedback.style.display = 'block';
-                document.getElementById('feedback-text').value = '';
-            }, 3000);
-        })
-        .catch(error => {
-            // Remove loader
-            feedbackLoader.remove();
-            btnSubmitFeedback.disabled = false;
-            console.error('Error submitting feedback:', error);
-        });
-    });
-}
