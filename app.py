@@ -1,10 +1,12 @@
-from typing import List
+from typing import List, Optional
 from flask import Flask, request, jsonify, render_template
 import os
+import tempfile
 from dotenv import load_dotenv
 from agents import Agent, ModelSettings, Runner, FileSearchTool, Tool
 from openai import OpenAI
 from openai.types.responses.response import ToolChoice
+from werkzeug.utils import secure_filename
 
 MODEL_SOCIAL_MEDIA = 'gpt-4o-mini'
 MODEL_COMPANY_INSIGHTS = 'gpt-4o-mini'
@@ -14,6 +16,12 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Create uploads directory if it doesn't exist
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Define routes
 @app.route('/')
@@ -105,42 +113,46 @@ def create_prompt(user_input: dict) -> str:
     return prompt
 
 
-# Initialize the company's insight agent
-company_insights_agent = Agent(
-    name="company_insights",
-    instructions="""
-    Your job is to extract insights about the company from the provided document.
-    Your goal is to provide useful information to the marketing team.
-    """,
-    model=MODEL_COMPANY_INSIGHTS,
-    tools=[
-        FileSearchTool(vector_store_ids=[create_vector_store_from_file(["context.pdf"]).id])
-    ],
-    model_settings=ModelSettings(
-        tool_choice="required",
-    ),
-)
+def save_uploaded_file(file) -> str:
+    """Save an uploaded file and return the path."""
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+    return file_path
 
-# Initialize the social media assistant agent
-social_media_assistant_agent = Agent(
-    name="social_media_assistant",
-    instructions="""
-        You are a social media assistant.
-        Your job is to generate a content brief for a social media post based on the user's input.
-        Each brief should guide the marketing team by suggesting the right format, giving creative design directions, and summarizing the key message.
-        Adapt your suggestions to the user's goal, audience, and tone. If details are missing, make reasonable assumptions.
-    """,
-    model=MODEL_SOCIAL_MEDIA,
-    tools=[
-        company_insights_agent.as_tool(
-            tool_name="company_insights_tool",
-            tool_description="Extract company strategy insights from the provided document."
+
+def create_company_insights_agent(context_file_path: Optional[str] = None):
+    """Create and return a company insights agent with the provided context file."""
+    # Default to using context.pdf if no file is provided
+    file_paths = [context_file_path] if context_file_path else ["context.pdf"]
+    
+    # Check if the file exists
+    for path in file_paths:
+        if not os.path.exists(path):
+            print(f"Warning: File {path} does not exist.")
+            return None
+    
+    # Create the agent with the file search tool
+    try:
+        vector_store = create_vector_store_from_file(file_paths)
+        
+        return Agent(
+            name="company_insights",
+            instructions="""
+            Your job is to extract insights about the company from the provided document.
+            Your goal is to provide useful information to the marketing team.
+            """,
+            model=MODEL_COMPANY_INSIGHTS,
+            tools=[
+                FileSearchTool(vector_store_ids=[vector_store.id])
+            ],
+            model_settings=ModelSettings(
+                tool_choice="required",
+            ),
         )
-    ],
-    model_settings=ModelSettings(
-        tool_choice="required",
-    ),
-)
+    except Exception as e:
+        print(f"Error creating company insights agent: {str(e)}")
+        return None
 
 
 @app.route('/generate', methods=['POST'])
@@ -151,12 +163,58 @@ async def generate_content():
         user_input = extract_user_inputs()
         user_prompt = create_prompt(user_input)
         user_settings = extract_user_settings()
+        
+        # Check if a context file was uploaded
+        context_file_path = None
+        if 'context_file' in request.files and request.files['context_file'].filename:
+            context_file = request.files['context_file']
+            context_file_path = save_uploaded_file(context_file)
+            print(f"----- Context file uploaded: {context_file_path}")
+        
+        # Create the company insights agent if a context file was provided
+        company_insights_agent = create_company_insights_agent(context_file_path)
+        
+        # Create the social media assistant agent with or without the company insights tool
+        tools = []
+        tool_choice = "none"  # Default to no tools if no context file
+        
+        if company_insights_agent:
+            tools = [
+                company_insights_agent.as_tool(
+                    tool_name="company_insights_tool",
+                    tool_description="Extract company strategy insights from the provided document."
+                )
+            ]
+            tool_choice = "required"  # Use tools if context file is provided
+        
+        social_media_assistant_agent = Agent(
+            name="social_media_assistant",
+            instructions="""
+                You are a social media assistant.
+                Your job is to generate a content brief for a social media post based on the user's input.
+                Each brief should guide the marketing team by suggesting the right format, giving creative design directions, and summarizing the key message.
+                Adapt your suggestions to the user's goal, audience, and tone. If details are missing, make reasonable assumptions.
+            """,
+            model=MODEL_SOCIAL_MEDIA,
+            tools=tools,
+            model_settings=ModelSettings(
+                tool_choice=tool_choice,
+            ),
+        )
 
         # Generate content using the agent
         print("----- Asking model to generate content and waiting...")
         result = await Runner.run(starting_agent=social_media_assistant_agent, input=user_prompt)
 
         print(f"----- Content generated: \n>>{result.final_output}")
+
+        # Clean up the uploaded file if it exists
+        if context_file_path and os.path.exists(context_file_path):
+            try:
+                os.remove(context_file_path)
+                print(f"----- Removed temporary file: {context_file_path}")
+            except Exception as e:
+                print(f"----- Error removing temporary file: {str(e)}")
 
         # Return the generated content
         return jsonify({

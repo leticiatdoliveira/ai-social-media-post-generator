@@ -56,33 +56,24 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('openaiModel').value = settings.openai?.model || 'gpt-3.5-turbo';
         }
     }
-    // Image upload handling
-    const imageUpload = document.getElementById('imageUpload');
-    const imagePreview = document.getElementById('imagePreview');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-    const removeImageBtn = document.getElementById('removeImage');
-    let uploadedImage = null;
 
-    // Handle image upload and preview
-    imageUpload.addEventListener('change', function(event) {
+    // Context file upload handling
+    const contextFileUpload = document.getElementById('contextFile');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    let uploadedContextFile = null;
+
+    // Handle context file upload
+    contextFileUpload.addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (file) {
-            uploadedImage = file;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                imagePreviewContainer.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+            uploadedContextFile = file;
+            fileNameDisplay.textContent = file.name;
+            fileNameDisplay.classList.add('visible');
+        } else {
+            uploadedContextFile = null;
+            fileNameDisplay.textContent = '';
+            fileNameDisplay.classList.remove('visible');
         }
-    });
-
-    // Remove uploaded image
-    removeImageBtn.addEventListener('click', function() {
-        imageUpload.value = '';
-        imagePreview.src = '';
-        imagePreviewContainer.style.display = 'none';
-        uploadedImage = null;
     });
 
     // Toggle max hashtags field visibility when hashtag checkbox is clicked
@@ -143,9 +134,9 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('openai_model', settings.openai?.model || 'gpt-3.5-turbo');
         }
 
-        // Add image if it exists
-        if (uploadedImage) {
-            formData.append('image', uploadedImage);
+        // Add context file if it exists
+        if (uploadedContextFile) {
+            formData.append('context_file', uploadedContextFile);
         }
 
         // Call API with FormData
@@ -163,23 +154,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('error').textContent = data.error;
                 document.getElementById('error').style.display = 'block';
             } else {
-                // Check if model was switched and show notification
-                if (data.model_switched) {
-                    const notification = document.createElement('div');
-                    notification.className = 'model-switch-notification';
-                    notification.innerHTML = `<i class="fas fa-info-circle"></i> Image detected: Automatically switched to ${data.model_used} for better image analysis.`;
-                    
-                    // Add notification before the content
-                    const resultContainer = document.getElementById('result');
-                    resultContainer.insertBefore(notification, resultContainer.firstChild);
-                    
-                    // Auto-dismiss after 10 seconds
-                    setTimeout(() => {
-                        notification.style.opacity = '0';
-                        setTimeout(() => notification.remove(), 500);
-                    }, 10000);
-                }
-                
                 // Always display result, regardless of required_inputs
                 document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
                 document.getElementById('result').style.display = 'block';
@@ -211,11 +185,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('maxHashtags').value = '5';
         document.getElementById('maxHashtagsContainer').classList.remove('visible');
 
-        // Reset image upload
-        imageUpload.value = '';
-        imagePreview.src = '';
-        imagePreviewContainer.style.display = 'none';
-        uploadedImage = null;
+        // Reset context file upload
+        contextFileUpload.value = '';
+        fileNameDisplay.textContent = '';
+        fileNameDisplay.classList.remove('visible');
+        uploadedContextFile = null;
 
         // Hide results and feedback
         document.getElementById('result').style.display = 'none';

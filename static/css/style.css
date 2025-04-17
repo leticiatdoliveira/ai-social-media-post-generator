@@ -355,6 +355,7 @@ input[type="number"] {
     color: var(--text-color);
     transition: border-color 0.3s, box-shadow 0.3s;
     background-color: #fff;
+    appearance: textfield;
     -moz-appearance: textfield; /* Firefox */
 }
 
@@ -675,4 +676,25 @@ input[type="number"]:focus {
 .btn-primary:hover {
     background-color: var(--primary-hover);
     transform: translateY(-2px);
+}
+
+/* Add this at the end of your CSS file */
+.file-upload-container {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.file-name-display {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-color);
+    background-color: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    display: none;
+}
+
+.file-name-display.visible {
+    display: block;
 }
