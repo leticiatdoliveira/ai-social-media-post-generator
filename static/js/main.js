@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Load OpenAI settings
             document.getElementById('scrapegraphApiKey').value = settings.scrapegraph?.apiKey || '';
             document.getElementById('openaiApiKey').value = settings.openai?.apiKey || '';
-            document.getElementById('openaiModel').value = settings.openai?.model || 'gpt-3.5-turbo';
+            document.getElementById('openaiModel').value = settings.openai?.model || 'gpt-4o-mini';
         }
     }
 
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('provider', 'openai'); // Always use OpenAI
             
             formData.append('openai_api_key', settings.openai?.apiKey || '');
-            formData.append('openai_model', settings.openai?.model || 'gpt-3.5-turbo');
+            formData.append('openai_model', settings.openai?.model || 'gpt-4o-mini');
 
             formData.append('scrapegraph_api_key', settings.scrapegraph?.apiKey || '');
         }

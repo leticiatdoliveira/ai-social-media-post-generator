@@ -6,7 +6,7 @@ import os
 from utils.vector_store import create_vector_store_from_file
 
 
-def create_file_agent(name: str, instructions: str, context_file_path: str | None, 
+def create_file_agent(name: str, instructions: str, context_file_path: Optional[str], 
                                   model: str, user_settings: dict) -> Optional[Agent]:
     """Create and return a company insights agent with the provided context file.
     
@@ -42,6 +42,7 @@ def create_file_agent(name: str, instructions: str, context_file_path: str | Non
             ],
             model_settings=ModelSettings(
                 tool_choice="required",
+                temperature=0.7
             ),
         )
     except Exception as e:
@@ -49,7 +50,7 @@ def create_file_agent(name: str, instructions: str, context_file_path: str | Non
         return None
 
 
-def create_social_media_assistant(model: str, tools: List = None, 
+def create_social_media_assistant(model: str, tools: List = [], 
                                   tool_choice: str = "none") -> Optional[Agent]:
     """Create a social media assistant agent.
     
@@ -66,7 +67,7 @@ def create_social_media_assistant(model: str, tools: List = None,
         instructions="""
             You are a social media assistant.
             Your job is to generate a content brief for a social media post based on the user's input.
-            Each brief should guide the marketing team by suggesting the right format, giving creative design 
+            Each brief should guide the marketing team by suggesting the correct format, giving creative design 
             directions, and summarizing the key message. Adapt your suggestions to the user's goal, audience, and tone. 
             If details are missing, make reasonable assumptions.
         """,
@@ -74,5 +75,6 @@ def create_social_media_assistant(model: str, tools: List = None,
         tools=tools or [],
         model_settings=ModelSettings(
             tool_choice=tool_choice,
+            temperature=0.8
         ),
     )

@@ -104,8 +104,7 @@ def generate_content():  # Remove async keyword
         user_settings=user_settings,
         instructions="""
         Your job is to extract insights about the data that was provided.
-        Your goal is to provide inspiration to a social media content creator.
-        """,
+        Your goal is to provide inspiration to a social media content creator.""",
         name="inspiration_agent"
     )
     
