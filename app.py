@@ -57,7 +57,6 @@ def generate_content():  # Remove async keyword
         try:
             profile_scraped_content = scrape.scrape_to_json(
                 api_key=user_settings.get("scrapegraph_api_key"),
-                model=user_settings.get("openai_model"),
                 url=user_input["profileUrl"],
                 prompt="Extract account information and data on its posts"
             )
@@ -71,7 +70,6 @@ def generate_content():  # Remove async keyword
         # Scrape the user's profile information
         web_scraped_content = scrape.scrape_to_json(
             api_key=user_settings.get("scrapegraph_api_key"),
-            model=user_settings.get("openai_model"),
             url=user_input["scrapeUrl"],
             prompt=user_input["scrapePrompt"]
         )

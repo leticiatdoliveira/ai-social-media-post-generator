@@ -1,5 +1,4 @@
 from scrapegraph_py import Client
-from scrapegraphai.graphs import SmartScraperGraph
 import json
 import os
 import hashlib
@@ -26,35 +25,7 @@ def scrape_website(client: Client, url: str, prompt: str) -> str:
     return response
 
 
-def init_scrapegraph_openai(api_key: str, model: str) -> dict:
-    """Initialize the ScrapegraphAI client."""
-
-    graph_config = {
-        "llm": {
-            "api_key": api_key,
-            "model": "openai/" + model,
-        },
-        "verbose": True,
-        "headless": True,
-    }
-
-    return graph_config
-
-
-def scrape_website_openai(config: dict, url: str, prompt: str) -> str:
-    """Scrape the website using the ScrapegraphAI smart scraper graph."""
-
-    smart_scraper_graph = SmartScraperGraph(
-        prompt=prompt,
-        source=url,
-        config=config
-    )
-
-    result = smart_scraper_graph.run()
-    return result
-
-
-def scrape_to_json(api_key, model, url, prompt) -> str:
+def scrape_to_json(api_key, url, prompt) -> str:
     """Scrape a website and save the content to a JSON file."""
 
     # *************** SCRAPEGRAPH *************** #
