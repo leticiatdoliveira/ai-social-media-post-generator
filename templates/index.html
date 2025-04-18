@@ -6,66 +6,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Social Media Content Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#d3312c',
+                        primaryHover: '#b32722',
+                        secondary: '#345b57',
+                        accent: '#ffeb4e',
+                        darkBg: '#000000',
+                        cardBg: '#121212',
+                        borderColor: '#333333',
+                        errorColor: '#ef4444',
+                        successColor: '#13b2a1'
+                    }
+                },
+                fontFamily: {
+                    sans: ['Poppins', 'sans-serif']
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
-<body>
-    <div class="page-container">
-        <div class="container">
-            <div class="header-container">
-                <h1>Social Media Content Generator</h1>
-                <button id="settingsBtn" class="btn-icon" title="Settings">
+<body class="bg-darkBg text-white font-sans min-h-screen">
+    <div class="flex flex-col min-h-screen">
+        <div class="max-w-4xl w-11/12 mx-auto my-10 bg-cardBg rounded-xl shadow-lg p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-4xl font-bold">Social Media Content Generator</h1>
+                <button id="settingsBtn" class="text-primary hover:text-primaryHover transition-transform hover:rotate-12 text-2xl border-none bg-transparent cursor-pointer" title="Settings">
                     <i class="fas fa-cog"></i>
                 </button>
             </div>
 
-            <div class="step-indicator">
-                <div class="step">1. Add Context</div>
-                <div class="step active">2. Generate Content</div>
+            <div class="flex justify-between mb-8 px-5">
+                <div class="flex-1 mx-2 py-2 px-4 rounded-md text-center font-medium step-indicator" data-step="1">1. Add Context</div>
+                <div class="flex-1 mx-2 py-2 px-4 rounded-md text-center font-medium step-indicator" data-step="2">2. Generate Content</div>
             </div>
 
             <!-- Context Section (Step 1) -->
             <div id="contextSection">
                 <form id="contextForm">
-                    <h2>Context</h2>
-                    <p class="help-text">This section will allow the model to have more information to produce a better output.</p>
-                    <br/>
+                    <h2 class="text-2xl font-semibold mb-2">Context</h2>
+                    <p class="text-gray-400 mb-4">This section will allow the model to have more information to produce a better output.</p>
                     <!-- Context file upload for company context -->
-                    <div class="form-group">
-                        <label for="contextFile">Company Context File <i>(Optional)</i></label>
-                        <div class="file-upload-container">
-                            <input type="file" id="contextFile" accept=".pdf,.txt,.docx" class="input-file">
-                            <div id="fileNameDisplay" class="file-name-display"></div>
+                    <div class="mb-6">
+                        <label for="contextFile" class="block mb-2 font-medium">Company Context File <i>(.pdf, .txt, .json)</i></label>
+                        <div class="bg-[#1a1a1a] relative border border-borderColor rounded-lg overflow-hidden">
+                            <input type="file" id="contextFile" accept=".pdf,.txt,.docx" class="w-full p-3 bg-[#1a1a1a] text-white">
+                            <div id="fileNameDisplay" class="text-sm"></div>
                         </div>
-                        <p class="help-text">Upload a PDF or text file with company information to improve content relevance</p>
+                        <p class="text-gray-400 text-sm mt-2">Upload a PDF or text file with company information to improve content relevance</p>
                     </div>
 
-                    <hr/>
-                    <br/>
+                    <hr class="border-borderColor my-6"/>
 
                     <!-- Add URL scraping section -->
-                    <div class="form-group">
-                        <h3>URL Scraping</h3>
-                        <br/>
-                        <div id="scrapingContainer" class="form-group">
-                            <div class="form-group">
-                                <label for="profileUrl">Profile URL</label>
-                                <input type="url" id="profileUrl" name="profileUrl" placeholder="https://example.com">
-                                <p class="help-text">Enter the URL of the company's profile page. This will allow the model to gather insights on your public.</p>
+                    <div class="mb-6">
+                        <h3 class="text-xl font-medium mb-4">URL Scraping</h3>
+                        <div id="scrapingContainer" class="mb-6">
+                            <div class="mb-6">
+                                <label for="profileUrl" class="block mb-2 font-medium">Profile URL</label>
+                                <input type="url" id="profileUrl" name="profileUrl" placeholder="https://example.com" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white outline-none">
+                                <p class="text-gray-400 text-sm mt-2">Enter the URL of the company's profile page. This will allow the model to gather insights on your public.</p>
                             </div>
-                            <div class="form-group">
-                                <label for="scrapeUrl">Any Website URL</label>
-                                <input type="url" id="scrapeUrl" name="scrapeUrl" placeholder="https://example.com">
+                            <div class="mb-6">
+                                <label for="scrapeUrl" class="block mb-2 font-medium">Any Website URL</label>
+                                <input type="url" id="scrapeUrl" name="scrapeUrl" placeholder="https://example.com" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white outline-none">
                             </div>
-                            <div class="form-group">
-                                <label for="scrapePrompt">Scraping Instructions <i>(What to extract from the website)</i></label>
-                                <textarea id="scrapePrompt" name="scrapePrompt" placeholder="E.g., Extract key product features, company mission, or recent news" rows="3"></textarea>
+                            <div class="mb-6">
+                                <label for="scrapePrompt" class="block mb-2 font-medium">Scraping Instructions <i>(What to extract from the website)</i></label>
+                                <textarea id="scrapePrompt" name="scrapePrompt" placeholder="E.g., Extract key product features, company mission, or recent news" rows="3" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white font-sans outline-none"></textarea>
                             </div>
                         </div>
                     </div>
 
-                    <button type="button" id="nextBtn" class="btn-generate">Next Step</button>
-                    <button type="button" id="resetContextBtn" class="btn-secondary">Clear Form</button>
+                    <button type="button" id="nextBtn" class="bg-primary hover:bg-primaryHover text-white font-medium py-3 px-6 rounded-lg transition-colors w-full mb-3">Next Step</button>
+                    <button type="button" id="resetContextBtn" class="bg-transparent border border-borderColor text-white font-medium py-3 px-6 rounded-lg hover:bg-gray-800 transition-colors w-full">Clear Form</button>
                 </form>
                 <div id="contextError" class="error"></div>
             </div>
@@ -73,34 +92,37 @@
             <!-- Content Section (Step 2) -->
             <div id="contentSection" style="display: none;">
                 <form id="contentForm">
-                    <button type="button" id="backBtn" class="btn-secondary">Back to Context</button>
-                    <div class="form-group">
-                    <label for="subject">Subject</label>
-                    <input type="text" id="subject" name="subject" placeholder="e.g. New product launch, Industry trends, etc." required>
+                    <button type="button" id="backBtn" class="bg-transparent border border-borderColor text-white font-medium py-3 px-6 rounded-lg hover:bg-gray-800 transition-colors w-full mb-6">Back to Context</button>
+                    <div class="mb-6">
+                    <label for="subject" class="block mb-2 font-medium">Subject</label>
+                    <input type="text" id="subject" name="subject" placeholder="e.g. New product launch, Industry trends, etc." required class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white outline-none">
                 </div>
 
-                <div class="form-group">
-                    <label for="description">Description <i>(Optional)</i></label>
-                    <textarea id="description" name="description" placeholder="Describe what you want in your post, e.g., key points to include, target audience, purpose of the post, etc." rows="4"></textarea>
+                <div class="mb-6">
+                    <label for="description" class="block mb-2 font-medium">Description <i>(Optional)</i></label>
+                    <textarea id="description" name="description" placeholder="Describe what you want in your post, e.g., key points to include, target audience, purpose of the post, etc." rows="4" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white font-sans outline-none"></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label for="platform">Social Media Platform</label>
-                    <div class="select-wrapper">
-                        <select id="platform" name="platform" required>
+                <div class="mb-6">
+                    <label for="platform" class="block mb-2 font-medium">Social Media Platform</label>
+                    <div class="relative">
+                        <select id="platform" name="platform" required class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white appearance-none pr-10 cursor-pointer">
                             <option value="">Select a platform</option>
                             <option value="LinkedIn">LinkedIn</option>
                             <option value="Instagram">Instagram</option>
                             <option value="Facebook">Facebook</option>
                             <option value="Twitter">Twitter</option>
                         </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="tone">Tone</label>
-                    <div class="select-wrapper">
-                        <select id="tone" name="tone" required>
+                <div class="mb-6">
+                    <label for="tone" class="block mb-2 font-medium">Tone</label>
+                    <div class="relative">
+                        <select id="tone" name="tone" required class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white appearance-none pr-10 cursor-pointer">
                             <option value="">Select a tone</option>
                             <option value="professional">Professional</option>
                             <option value="casual">Casual</option>
@@ -108,89 +130,95 @@
                             <option value="humorous">Humorous</option>
                             <option value="inspirational">Inspirational</option>
                         </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <div class="checkbox-container">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="hashtags" name="hashtags">
-                            <span class="custom-checkbox"></span>
-                            Include hashtags
+                <div class="mb-6">
+                    <div class="flex items-center mb-4">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="hashtags" name="hashtags" class="sr-only peer">
+                            <div class="relative w-6 h-6 bg-[#1a1a1a] border-2 border-borderColor rounded-md peer-checked:bg-primary peer-checked:border-primary after:content-[''] after:absolute after:left-1/2 after:top-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:opacity-0 peer-checked:after:opacity-100 after:w-2 after:h-3 after:border-b-2 after:border-r-2 after:border-white after:rotate-45 transition-all"></div>
+                            <span class="ml-3">Include hashtags</span>
                         </label>
                     </div>
-                    <div id="maxHashtagsContainer" class="form-group">
-                        <label for="maxHashtags">Maximum number of hashtags</label>
-                        <input type="number" id="maxHashtags" name="maxHashtags" min="1" max="30" value="5">
+                    <div id="maxHashtagsContainer" class="mb-6">
+                        <label for="maxHashtags" class="block mb-2 font-medium">Maximum number of hashtags</label>
+                        <input type="number" id="maxHashtags" name="maxHashtags" min="1" max="30" value="5" class="w-32 p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white outline-none">
                     </div>
                 </div>
 
-                <button type="button" id="generateBtn" class="btn-generate">Generate Content</button>
-                <button type="button" id="resetBtn" class="btn-secondary">Clear Form</button>
+                <button type="button" id="generateBtn" class="bg-primary hover:bg-primaryHover text-white font-medium py-3 px-6 rounded-lg transition-colors w-full mb-3">Generate Content</button>
+                <button type="button" id="resetBtn" class="bg-transparent border border-borderColor text-white font-medium py-3 px-6 rounded-lg hover:bg-gray-800 transition-colors w-full">Clear Form</button>
             </form>
 
-            <div id="loader" class="loader">
-                <div class="spinner"></div>
+            <div id="loader" class="hidden flex justify-center items-center py-10">
+                <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
 
-            <div id="error" class="error"></div>
+            <div id="error" class="hidden text-errorColor p-4 my-4 bg-errorColor/10 rounded-lg"></div>
 
-            <div id="result" class="result-container">
-                <h3>Generated Content</h3>
-                <div id="content-display" class="content-box"></div>
-                <button id="copyBtn" class="btn-copy">Copy to Clipboard</button>
+            <div id="result" class="hidden mt-8">
+                <h3 class="text-xl font-semibold mb-4">Generated Content</h3>
+                <div id="content-display" class="bg-[#1a1a1a] border border-borderColor rounded-lg p-6 mb-4 whitespace-pre-wrap"></div>
+                <button id="copyBtn" class="bg-secondary hover:bg-secondary/80 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"><i class="fas fa-copy"></i> Copy to Clipboard</button>
 
-                <div id="feedback-container" class="feedback-container">
-                    <button id="btn-feedback">Provide Feedback to Improve</button>
+                <div id="feedback-container" class="mt-6">
+                    <button id="btn-feedback" class="text-accent hover:text-accent/80 font-medium py-2 px-0 bg-transparent border-none transition-colors">Provide Feedback to Improve</button>
                     
-                    <div id="feedback-form" style="display: none;">
-                        <textarea id="feedback-text" placeholder="What would you like to improve about this content?"></textarea>
-                        <div class="feedback-buttons">
-                            <button id="btn-submit-feedback">Submit Feedback</button>
-                            <button id="btn-cancel-feedback">Cancel</button>
+                    <div id="feedback-form" style="display: none;" class="mt-4">
+                        <textarea id="feedback-text" placeholder="What would you like to improve about this content?" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white font-sans mb-3" rows="4"></textarea>
+                        <div class="flex gap-3">
+                            <button id="btn-submit-feedback" class="bg-primary hover:bg-primaryHover text-white font-medium py-2 px-4 rounded-lg transition-colors">Submit Feedback</button>
+                            <button id="btn-cancel-feedback" class="bg-transparent border border-borderColor text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors">Cancel</button>
                         </div>
                     </div>
                     
-                    <div id="feedback-success" class="success" style="display: none;"></div>
+                    <div id="feedback-success" class="hidden text-successColor p-4 my-4 bg-successColor/10 rounded-lg"></div>
                 </div>
             </div>
         </div>
 
         <!-- Settings Modal -->
-        <div id="settingsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>OpenAI Settings</h2>
-                    <span class="close">&times;</span>
+        <div id="settingsModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+            <div class="bg-cardBg rounded-xl shadow-lg max-w-md w-full mx-4">
+                <div class="flex justify-between items-center p-6 border-b border-borderColor">
+                    <h2 class="text-2xl font-semibold">OpenAI Settings</h2>
+                    <span class="close text-gray-400 hover:text-white text-2xl cursor-pointer">&times;</span>
                 </div>
-                <div class="modal-body">
+                <div class="p-6">
                     <form id="settingsForm">
-                        <div class="form-group">
-                            <label for="scrapegraphApiKey">ScrapeGraphAI API Key</label>
-                            <input type="password" id="scrapegraphApiKey" name="scrapegraphApiKey" placeholder="sgai-...">
+                        <div class="mb-6">
+                            <label for="scrapegraphApiKey" class="block mb-2 font-medium">ScrapeGraphAI API Key</label>
+                            <input type="password" id="scrapegraphApiKey" name="scrapegraphApiKey" placeholder="sgai-..." class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white">
                         </div>
-                        <div class="form-group">
-                            <label for="openaiApiKey">OpenAI API Key</label>
-                            <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-...">
+                        <div class="mb-6">
+                            <label for="openaiApiKey" class="block mb-2 font-medium">OpenAI API Key</label>
+                            <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-..." class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white">
                         </div>
-                        <div class="form-group">
-                            <label for="openaiModel">Model</label>
-                            <div class="select-wrapper">
-                                <select id="openaiModel" name="openaiModel">
+                        <div class="mb-6">
+                            <label for="openaiModel" class="block mb-2 font-medium">Model</label>
+                            <div class="relative">
+                                <select id="openaiModel" name="openaiModel" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white appearance-none pr-10 cursor-pointer">
                                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                                     <option value="gpt-4o-mini">GPT-4o Mini</option>
                                     <option value="gpt-4">GPT-4</option>
                                 </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
                         </div>
                         
-                        <button type="button" id="saveSettingsBtn" class="btn-primary">Save Settings</button>
+                        <button type="button" id="saveSettingsBtn" class="bg-primary hover:bg-primaryHover text-white font-medium py-3 px-6 rounded-lg transition-colors w-full">Save Settings</button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <footer>
+        <footer class="py-4 text-center text-gray-400">
             <p>Powered by AI · Created with Flask</p>
         </footer>
     </div>

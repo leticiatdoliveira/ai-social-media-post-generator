@@ -27,11 +27,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Define routes
 @app.route('/')
-def context():
-    """Render the context collection page (first step)."""
-    return render_template('context.html')
-
-@app.route('/generate-content')
 def index():
     """Render the content generation page (second step)."""
     return render_template('index.html')

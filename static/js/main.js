@@ -1,38 +1,62 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM fully loaded');
+    
     // Initialize step tracking
     let currentStep = 1;
-    const totalSteps = 2;
     // Settings modal functionality
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsModal = document.getElementById('settingsModal');
     const closeBtn = document.querySelector('.close');
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
     
+    // Debug element references
+    console.log('settingsBtn element:', settingsBtn);
+    console.log('settingsModal element:', settingsModal);
+    console.log('closeBtn element:', closeBtn);
+    
     // Load saved settings if they exist
     loadSettings();
     
     // Show the settings modal when the settings button is clicked
-    settingsBtn.addEventListener('click', function() {
-        settingsModal.style.display = 'block';
-    });
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', function(e) {
+            console.log('Settings button clicked');
+            e.preventDefault(); // Prevent any default behavior
+            settingsModal.classList.remove('hidden');
+            settingsModal.classList.add('flex');
+        });
+        
+        // Add a direct onclick attribute as a fallback
+        settingsBtn.onclick = function() {
+            console.log('Settings button onclick triggered');
+            settingsModal.classList.remove('hidden');
+            settingsModal.classList.add('flex');
+            return false;
+        };
+    } else {
+        console.error('Settings button not found in the DOM');
+    }
     
     // Close the modal when the close button is clicked
     closeBtn.addEventListener('click', function() {
-        settingsModal.style.display = 'none';
+        settingsModal.classList.remove('flex');
+        settingsModal.classList.add('hidden');
     });
     
     // Close the modal when clicking outside of it
     window.addEventListener('click', function(event) {
         if (event.target === settingsModal) {
-            settingsModal.style.display = 'none';
+            settingsModal.classList.remove('flex');
+            settingsModal.classList.add('hidden');
         }
     });
     
     // Save settings when the save button is clicked
     saveSettingsBtn.addEventListener('click', function() {
         saveSettings();
-        settingsModal.style.display = 'none';
+        settingsModal.classList.remove('flex');
+        settingsModal.classList.add('hidden');
     });
     
     // Function to save settings to localStorage
@@ -67,16 +91,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize form sections
     const contextSection = document.getElementById('contextSection');
     const contentSection = document.getElementById('contentSection');
-    const stepIndicators = document.querySelectorAll('.step-indicator .step');
+    const stepIndicators = document.querySelectorAll('.step-indicator');
+
+    updateStepDisplay();
     
     // Show the appropriate section based on current step
     function updateStepDisplay() {
-        // Update step indicators
-        stepIndicators.forEach((step, index) => {
-            if (index + 1 === currentStep) {
-                step.classList.add('active');
+        stepIndicators.forEach((step) => {
+            const stepNumber = parseInt(step.getAttribute('data-step'));
+            if (stepNumber === currentStep) {
+                step.classList.add('bg-primary');
+                step.classList.add('text-white');
+                step.classList.add('shadow-md');
+                step.classList.remove('bg-cardBg');
+                step.classList.remove('text-gray-500');
             } else {
-                step.classList.remove('active');
+                step.classList.remove('bg-primary');
+                step.classList.remove('text-white');
+                step.classList.remove('shadow-md');
+                step.classList.add('bg-cardBg');
+                step.classList.add('text-gray-500');
             }
         });
         
@@ -101,17 +135,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (file) {
             uploadedContextFile = file;
             fileNameDisplay.textContent = file.name;
-            fileNameDisplay.classList.add('visible');
+            fileNameDisplay.classList.remove('hidden');
         } else {
             uploadedContextFile = null;
             fileNameDisplay.textContent = '';
-            fileNameDisplay.classList.remove('visible');
+            fileNameDisplay.classList.add('hidden');
         }
     });
     
     // Next button click handler
     document.getElementById('nextBtn').addEventListener('click', function() {
-        currentStep = 2;
+        currentStep = 2;       // Update step display and hide context inf
         updateStepDisplay();
     });
     
@@ -135,16 +169,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('scrapePrompt').value = '';
         
         // Hide error if shown
-        document.getElementById('contextError').style.display = 'none';
+        document.getElementById('contextError').classList.add('hidden');
     });
 
     // Toggle max hashtags field visibility when hashtag checkbox is clicked
     document.getElementById('hashtags').addEventListener('change', function() {
         const container = document.getElementById('maxHashtagsContainer');
         if (this.checked) {
-            container.classList.add('visible');
+            container.classList.remove('hidden');
         } else {
-            container.classList.remove('visible');
+            container.classList.add('hidden');
         }
     });
 
@@ -161,18 +195,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Form validation
         if (!subject || !platform || !tone) {
             document.getElementById('error').textContent = 'Please fill in all required fields.';
-            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').classList.remove('hidden');
             return;
         }
 
         // Hide error if it was shown
-        document.getElementById('error').style.display = 'none';
+        document.getElementById('error').classList.add('hidden');
 
         // Show loader
-        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('loader').classList.remove('hidden');
+        document.getElementById('loader').classList.add('flex');
 
         // Hide result
-        document.getElementById('result').style.display = 'none';
+        document.getElementById('result').classList.add('hidden');
 
         // Create FormData for submission
         const formData = new FormData();
@@ -216,25 +251,27 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             // Hide loader
-            document.getElementById('loader').style.display = 'none';
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('loader').classList.remove('flex');
 
             if (data.error) {
                 // Show error
                 document.getElementById('error').textContent = data.error;
-                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').classList.remove('hidden');
             } else {
                 // Always display result, regardless of required_inputs
                 document.getElementById('content-display').innerHTML = data.content.replace(/\n/g, '<br>');
-                document.getElementById('result').style.display = 'block';
+                document.getElementById('result').classList.remove('hidden');
             }
         })
         .catch((error) => {
             // Hide loader
-            document.getElementById('loader').style.display = 'none';
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('loader').classList.remove('flex');
 
             // Show error
             document.getElementById('error').textContent = 'Failed to generate content. Please try again later.';
-            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').classList.remove('hidden');
             console.error('Error:', error);
         });
     });
@@ -250,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset hashtags checkbox and max hashtags
         document.getElementById('hashtags').checked = false;
         document.getElementById('maxHashtags').value = '5';
-        document.getElementById('maxHashtagsContainer').classList.remove('visible');
+        document.getElementById('maxHashtagsContainer').classList.add('hidden');
 
         // Reset context file upload
         contextFileUpload.value = '';
@@ -264,8 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('scrapingContainer').style.display = 'none';
 
         // Hide results
-        document.getElementById('result').style.display = 'none';
-        document.getElementById('error').style.display = 'none';
+        document.getElementById('result').classList.add('hidden');
+        document.getElementById('error').classList.add('hidden');
 
         // Clear content
         document.getElementById('content-display').innerHTML = '';
