@@ -70,6 +70,7 @@ def create_social_media_assistant(model: str, tools: List = [],
             Each brief should guide the marketing team by suggesting the correct format, giving creative design 
             directions, and summarizing the key message. Adapt your suggestions to the user's goal, audience, and tone. 
             If details are missing, make reasonable assumptions.
+            Use all tools available to you.
         """,
         model=model,
         tools=tools or [],

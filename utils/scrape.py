@@ -4,7 +4,6 @@ import json
 import os
 import hashlib
 import time
-import asyncio
 import nest_asyncio
 
 
@@ -57,16 +56,27 @@ def scrape_website_openai(config: dict, url: str, prompt: str) -> str:
 
 def scrape_to_json(api_key, model, url, prompt) -> str:
     """Scrape a website and save the content to a JSON file."""
-    # *************** AI *************** #
-    graph_config = init_scrapegraph_openai(api_key, model)
-    
+
+    # *************** SCRAPEGRAPH *************** #
+    client = init_client(api_key)
     # Call the function directly without async handling
-    scraped_content = scrape_website_openai(
-        config=graph_config,
+    scraped_content = scrape_website(
+        client=client,
         url=url,
         prompt=prompt
     )
-    # *********************************** #
+    # ******************************************* #
+
+    # # *************** AI *************** #
+    # graph_config = init_scrapegraph_openai(api_key, model)
+    
+    # # Call the function directly without async handling
+    # scraped_content = scrape_website_openai(
+    #     config=graph_config,
+    #     url=url,
+    #     prompt=prompt
+    # )
+    # # *********************************** #
 
     # Create directory using a reference to the project root
     # This will work regardless of where the function is called from

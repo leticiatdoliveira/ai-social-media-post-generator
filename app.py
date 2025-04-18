@@ -42,12 +42,18 @@ def generate_content():  # Remove async keyword
     user_settings = extract_user_settings()
     user_input = extract_user_inputs()
     
+    if not user_settings.get("openai_api_key"):
+        return jsonify({"error": "OpenAI API key is missing. Please provide a valid API key."}), 400
     os.environ['OPENAI_API_KEY'] = user_settings.get("openai_api_key")
                     
     profile_scraped_content = None
     web_scraped_content = None
     
     if user_input["profileUrl"]:
+        if not user_settings.get("scrapegraph_api_key"):
+            return jsonify({"error": "ScrapeGraph API key is missing. Please provide a valid API key."}), 400
+
+        # Scrape the user's profile information
         try:
             profile_scraped_content = scrape.scrape_to_json(
                 api_key=user_settings.get("scrapegraph_api_key"),
@@ -56,9 +62,13 @@ def generate_content():  # Remove async keyword
                 prompt="Extract account information and data on its posts"
             )
         except Exception as e:
-            return jsonify({"error": f"Failed to scrape profile: {str(e)}"})
+            return jsonify({"error": f"Failed to scrape profile: {str(e)}"}), 400
     
     if user_input["scrapeUrl"] and user_input["scrapePrompt"]:
+        if not user_settings.get("scrapegraph_api_key"):
+            return jsonify({"error": "ScrapeGraph API key is missing. Please provide a valid API key."}), 400
+       
+        # Scrape the user's profile information
         web_scraped_content = scrape.scrape_to_json(
             api_key=user_settings.get("scrapegraph_api_key"),
             model=user_settings.get("openai_model"),
@@ -104,7 +114,8 @@ def generate_content():  # Remove async keyword
         user_settings=user_settings,
         instructions="""
         Your job is to extract insights about the data that was provided.
-        Your goal is to provide inspiration to a social media content creator.""",
+        Your goal is to provide inspiration to a social media content creator, 
+        or any content that could be relevant to social media posts.""",
         name="inspiration_agent"
     )
     
@@ -117,7 +128,7 @@ def generate_content():  # Remove async keyword
         tools.append(
             company_insights_agent.as_tool(
                 tool_name="company_insights_tool",
-                tool_description="Extract company strategy insights from the provided document."
+                tool_description="Extract company strategy insights."
             )
         )
         
@@ -135,7 +146,7 @@ def generate_content():  # Remove async keyword
         tools.append(
             inspiration_agent.as_tool(
                 tool_name="inspiration_agent",
-                tool_description="Draw inspiration from examples."
+                tool_description="Use web available data to inspire the content."
             )
         )
     
@@ -154,13 +165,14 @@ def generate_content():  # Remove async keyword
 
     print(f"----- Content generated: \n>>{result.final_output}")
 
-    # Clean up the uploaded file if it exists
-    if context_file_path and os.path.exists(context_file_path):
+    # Clean up all files in the files directory
+    for filename in os.listdir(FILES_FOLDER):
+        file_path = os.path.join(FILES_FOLDER, filename)
         try:
-            os.remove(context_file_path)
-            print(f"----- Removed temporary file: {context_file_path}")
+            if os.path.isfile(file_path):
+                os.remove(file_path)
         except Exception as e:
-            print(f"----- Error removing temporary file: {str(e)}")
+            print(f"Error deleting {file_path}: {e}")
 
     # Return the generated content
     return jsonify({
