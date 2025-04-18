@@ -19,18 +19,62 @@
                 </button>
             </div>
 
-            <form id="contentForm">
-                <!-- New file upload for company context -->
-                <div class="form-group">
-                    <label for="contextFile">Company Context File <i>(Optional)</i></label>
-                    <div class="file-upload-container">
-                        <input type="file" id="contextFile" accept=".pdf,.txt,.docx" class="input-file">
-                        <div id="fileNameDisplay" class="file-name-display"></div>
-                    </div>
-                    <p class="help-text">Upload a PDF or text file with company information to improve content relevance</p>
-                </div>
+            <div class="step-indicator">
+                <div class="step">1. Add Context</div>
+                <div class="step active">2. Generate Content</div>
+            </div>
 
-                <div class="form-group">
+            <!-- Context Section (Step 1) -->
+            <div id="contextSection">
+                <form id="contextForm">
+                    <h2>Context</h2>
+                    <p class="help-text">This section will allow the model to have more information to produce a better output.</p>
+                    <br/>
+                    <!-- Context file upload for company context -->
+                    <div class="form-group">
+                        <label for="contextFile">Company Context File <i>(Optional)</i></label>
+                        <div class="file-upload-container">
+                            <input type="file" id="contextFile" accept=".pdf,.txt,.docx" class="input-file">
+                            <div id="fileNameDisplay" class="file-name-display"></div>
+                        </div>
+                        <p class="help-text">Upload a PDF or text file with company information to improve content relevance</p>
+                    </div>
+
+                    <hr/>
+                    <br/>
+
+                    <!-- Add URL scraping section -->
+                    <div class="form-group">
+                        <h3>URL Scraping</h3>
+                        <br/>
+                        <div id="scrapingContainer" class="form-group">
+                            <div class="form-group">
+                                <label for="profileUrl">Profile URL</label>
+                                <input type="url" id="profileUrl" name="profileUrl" placeholder="https://example.com">
+                                <p class="help-text">Enter the URL of the company's profile page. This will allow the model to gather insights on your public.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="scrapeUrl">Any Website URL</label>
+                                <input type="url" id="scrapeUrl" name="scrapeUrl" placeholder="https://example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="scrapePrompt">Scraping Instructions <i>(What to extract from the website)</i></label>
+                                <textarea id="scrapePrompt" name="scrapePrompt" placeholder="E.g., Extract key product features, company mission, or recent news" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="nextBtn" class="btn-generate">Next Step</button>
+                    <button type="button" id="resetContextBtn" class="btn-secondary">Clear Form</button>
+                </form>
+                <div id="contextError" class="error"></div>
+            </div>
+
+            <!-- Content Section (Step 2) -->
+            <div id="contentSection" style="display: none;">
+                <form id="contentForm">
+                    <button type="button" id="backBtn" class="btn-secondary">Back to Context</button>
+                    <div class="form-group">
                     <label for="subject">Subject</label>
                     <input type="text" id="subject" name="subject" placeholder="e.g. New product launch, Industry trends, etc." required>
                 </div>
@@ -38,27 +82,6 @@
                 <div class="form-group">
                     <label for="description">Description <i>(Optional)</i></label>
                     <textarea id="description" name="description" placeholder="Describe what you want in your post, e.g., key points to include, target audience, purpose of the post, etc." rows="4"></textarea>
-                </div>
-
-                <!-- Add URL scraping section -->
-                <div class="form-group">
-                    <div class="checkbox-container">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enableScraping" name="enableScraping">
-                            <span class="custom-checkbox"></span>
-                            Include content from a website
-                        </label>
-                    </div>
-                    <div id="scrapingContainer" class="form-group" style="display: none;">
-                        <div class="form-group">
-                            <label for="scrapeUrl">Website URL</label>
-                            <input type="url" id="scrapeUrl" name="scrapeUrl" placeholder="https://example.com">
-                        </div>
-                        <div class="form-group">
-                            <label for="scrapePrompt">Scraping Instructions <i>(What to extract from the website)</i></label>
-                            <textarea id="scrapePrompt" name="scrapePrompt" placeholder="E.g., Extract key product features, company mission, or recent news" rows="3"></textarea>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="form-group">

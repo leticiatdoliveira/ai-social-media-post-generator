@@ -1,5 +1,8 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize step tracking
+    let currentStep = 1;
+    const totalSteps = 2;
     // Settings modal functionality
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsModal = document.getElementById('settingsModal');
@@ -61,6 +64,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Initialize form sections
+    const contextSection = document.getElementById('contextSection');
+    const contentSection = document.getElementById('contentSection');
+    const stepIndicators = document.querySelectorAll('.step-indicator .step');
+    
+    // Show the appropriate section based on current step
+    function updateStepDisplay() {
+        // Update step indicators
+        stepIndicators.forEach((step, index) => {
+            if (index + 1 === currentStep) {
+                step.classList.add('active');
+            } else {
+                step.classList.remove('active');
+            }
+        });
+        
+        // Show/hide appropriate sections
+        if (currentStep === 1) {
+            contextSection.style.display = 'block';
+            contentSection.style.display = 'none';
+        } else {
+            contextSection.style.display = 'none';
+            contentSection.style.display = 'block';
+        }
+    }
+    
     // Context file upload handling
     const contextFileUpload = document.getElementById('contextFile');
     const fileNameDisplay = document.getElementById('fileNameDisplay');
@@ -79,6 +108,35 @@ document.addEventListener('DOMContentLoaded', function() {
             fileNameDisplay.classList.remove('visible');
         }
     });
+    
+    // Next button click handler
+    document.getElementById('nextBtn').addEventListener('click', function() {
+        currentStep = 2;
+        updateStepDisplay();
+    });
+    
+    // Back button click handler
+    document.getElementById('backBtn').addEventListener('click', function() {
+        currentStep = 1;
+        updateStepDisplay();
+    });
+    
+    // Reset context form
+    document.getElementById('resetContextBtn').addEventListener('click', function() {
+        // Reset file upload
+        contextFileUpload.value = '';
+        fileNameDisplay.textContent = '';
+        fileNameDisplay.classList.remove('visible');
+        uploadedContextFile = null;
+        
+        // Reset scraping fields
+        document.getElementById('profileUrl').value = '';
+        document.getElementById('scrapeUrl').value = '';
+        document.getElementById('scrapePrompt').value = '';
+        
+        // Hide error if shown
+        document.getElementById('contextError').style.display = 'none';
+    });
 
     // Toggle max hashtags field visibility when hashtag checkbox is clicked
     document.getElementById('hashtags').addEventListener('change', function() {
@@ -87,16 +145,6 @@ document.addEventListener('DOMContentLoaded', function() {
             container.classList.add('visible');
         } else {
             container.classList.remove('visible');
-        }
-    });
-
-    // Toggle scraping fields visibility when scraping checkbox is clicked
-    document.getElementById('enableScraping').addEventListener('change', function() {
-        const container = document.getElementById('scrapingContainer');
-        if (this.checked) {
-            container.style.display = 'block';
-        } else {
-            container.style.display = 'none';
         }
     });
 
@@ -152,24 +200,13 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('context_file', uploadedContextFile);
         }
         
-        // Add scraping fields to form data
-        const enableScraping = document.getElementById('enableScraping').checked;
-        formData.append('enableScraping', enableScraping);
-        
-        if (enableScraping) {
-            const scrapeUrl = document.getElementById('scrapeUrl').value;
-            const scrapePrompt = document.getElementById('scrapePrompt').value;
-            
-            if (!scrapeUrl) {
-                document.getElementById('error').textContent = 'Please enter a URL to scrape.';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('loader').style.display = 'none';
-                return;
-            }
-            
-            formData.append('scrapeUrl', scrapeUrl);
-            formData.append('scrapePrompt', scrapePrompt || 'Extract the main content from this page');
-        }
+        // Add context data from the first step
+        const profileUrl = document.getElementById('profileUrl').value;
+        const scrapeUrl = document.getElementById('scrapeUrl').value;
+        const scrapePrompt = document.getElementById('scrapePrompt').value;
+        formData.append('profileUrl', profileUrl);
+        formData.append('scrapeUrl', scrapeUrl);
+        formData.append('scrapePrompt', scrapePrompt || 'Extract the main content from this page');
 
         // Call API with FormData
         fetch('/generate', {
@@ -222,7 +259,6 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadedContextFile = null;
         
         // Reset scraping fields
-        document.getElementById('enableScraping').checked = false;
         document.getElementById('scrapeUrl').value = '';
         document.getElementById('scrapePrompt').value = '';
         document.getElementById('scrapingContainer').style.display = 'none';

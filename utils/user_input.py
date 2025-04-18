@@ -38,7 +38,6 @@ def extract_user_inputs() -> dict:
     max_hashtags = request.form.get('maxHashtags', 5)
     
     # Extract scraping data
-    enable_scraping = request.form.get('enableScraping') == 'true'
     scrape_url = request.form.get('scrapeUrl', '')
     scrape_prompt = request.form.get('scrapePrompt', 'Extract the main content from this page')
 
@@ -50,7 +49,6 @@ def extract_user_inputs() -> dict:
         "tone": tone,
         "includeHashtags": include_hashtags,
         "maxHashtags": max_hashtags,
-        "enableScraping": enable_scraping,
         "scrapeUrl": scrape_url,
         "scrapePrompt": scrape_prompt
     }

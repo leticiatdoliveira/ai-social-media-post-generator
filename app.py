@@ -27,8 +27,13 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Define routes
 @app.route('/')
+def context():
+    """Render the context collection page (first step)."""
+    return render_template('context.html')
+
+@app.route('/generate-content')
 def index():
-    """Render the main application page."""
+    """Render the content generation page (second step)."""
     return render_template('index.html')
 
 
@@ -47,7 +52,7 @@ async def generate_content():
         scraped_content = None
         
         # Perform scraping if enabled
-        if user_input["enableScraping"] and user_input["scrapeUrl"]:
+        if user_input["scrapeUrl"]:
             try:
                 scrapegraph_api_key = user_settings.get("scrapegraph_api_key")
                 if not scrapegraph_api_key:
