@@ -12,17 +12,17 @@ from utils.user_input import (
     create_prompt,
     save_uploaded_file
 )
-from agents_config import create_company_insights_agent, create_social_media_assistant
+from agents_config import create_file_agent, create_social_media_assistant
 
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Create uploads directory if it doesn't exist
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Create a files directory if it doesn't exist
+FILES_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'files')
+if not os.path.exists(FILES_FOLDER):
+    os.makedirs(FILES_FOLDER)
+app.config['FILES_FOLDER'] = FILES_FOLDER
 
 
 # Define routes
@@ -43,57 +43,101 @@ async def generate_content():
         user_settings = extract_user_settings()
         user_input = extract_user_inputs()
         
-        # Initialize scraped content
-        scraped_content = None
+        profile_scraped_content = None
+        web_scraped_content = None
         
-        # Perform scraping if enabled
-        if user_input["scrapeUrl"]:
-            try:
-                scrapegraph_api_key = user_settings.get("scrapegraph_api_key")
-                if not scrapegraph_api_key:
-                    return jsonify({"error": "ScrapeGraphAI API key is required for website scraping"})
+        if user_input["profileUrl"]:
+            profile_scraped_content = scrape.scrape_to_json(
+                api_key=user_settings.get("scrapegraph_api_key"),
+                model=user_settings.get("openai_model"),
+                url=user_input["profileUrl"],
+                prompt="Extract account information and data on its posts"
+            )
+        
+        if user_input["scrapeUrl"] and user_input["scrapePrompt"]:
+            web_scraped_content = scrape.scrape_to_json(
+                api_key=user_settings.get("scrapegraph_api_key"),
+                model=user_settings.get("openai_model"),
+                url=user_input["scrapeUrl"],
+                prompt=user_input["scrapePrompt"]
+            )
                 
-                # Initialize the scraper client
-                client = scrape.init_client(scrapegraph_api_key)
-                
-                # Scrape the website
-                scraped_content = scrape.scrape_website(
-                    client=client,
-                    url=user_input["scrapeUrl"],
-                    prompt=user_input["scrapePrompt"]
-                )
-                print(f"----- Content scraped from {user_input['scrapeUrl']}")
-            except Exception as e:
-                return jsonify({"error": f"Failed to scrape website: {str(e)}"})
-                
-        user_prompt = create_prompt(user_input, scraped_content)
+        user_prompt = create_prompt(user_input)
         
         # Check if a context file was uploaded
         context_file_path = None
         if 'context_file' in request.files and request.files['context_file'].filename:
             context_file = request.files['context_file']
-            context_file_path = save_uploaded_file(context_file, app.config['UPLOAD_FOLDER'])
+            context_file_path = save_uploaded_file(context_file, app.config['FILES_FOLDER'])
             print(f"----- Context file uploaded: {context_file_path}")
         
         # Create the company insights agent if a context file was provided
-        company_insights_agent = create_company_insights_agent(
+        company_insights_agent = create_file_agent(
             context_file_path=context_file_path,
             model=user_settings.get("openai_model"),
-            user_settings=user_settings
+            user_settings=user_settings,
+            instructions="""
+            Your job is to extract insights about the company from the provided document.
+            Your goal is to provide useful information to the marketing team.
+            """,
+            name="company_insights_agent"
+        )
+        
+        profile_insights_agent = create_file_agent(
+            context_file_path=profile_scraped_content,
+            model=user_settings.get("openai_model"),
+            user_settings=user_settings,
+            instructions="""
+            Your job is to extract insights about the target audience based on the data from this user profile.
+            Your goal is to provide useful information to adapt new social media content to the audience.
+            """,
+            name="profile_insights_agent"
+        )
+        
+        inspiration_agent = create_file_agent(
+            context_file_path=web_scraped_content,
+            model=user_settings.get("openai_model"),
+            user_settings=user_settings,
+            instructions="""
+            Your job is to extract insights about the data that was provided.
+            Your goal is to provide inspiration to a social media content creator.
+            """,
+            name="inspiration_agent"
         )
         
         # Create the social media assistant agent with or without the company insights tool
         tools = []
-        tool_choice = "none"  # Default to no tools if no context file
+        tool_choice = "required"
         
+        # Add company insights tool if agent exists
         if company_insights_agent:
-            tools = [
+            tools.append(
                 company_insights_agent.as_tool(
                     tool_name="company_insights_tool",
                     tool_description="Extract company strategy insights from the provided document."
                 )
-            ]
-            tool_choice = "required"  # Use tools if context file is provided
+            )
+            
+        # Add profile insights tool if agent exists
+        if profile_insights_agent:
+            tools.append(
+                profile_insights_agent.as_tool(
+                    tool_name="profile_insights_agent",
+                    tool_description="Extract insights about the target audience."
+                )
+            )
+            
+        # Add inspiration tool if agent exists
+        if inspiration_agent:
+            tools.append(
+                inspiration_agent.as_tool(
+                    tool_name="inspiration_agent",
+                    tool_description="Draw inspiration from examples."
+                )
+            )
+        
+        if not tools:
+            tool_choice = "none"
         
         social_media_assistant_agent = create_social_media_assistant(
             model=user_settings.get("openai_model"),

@@ -11,8 +11,5 @@ __pycache__/
 # MacOS
 .DS_Store
 
-# Uploads
-uploads/
-
-# Files 
-*.pdf
+# Files
+files/

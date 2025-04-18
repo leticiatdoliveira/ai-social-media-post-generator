@@ -38,6 +38,7 @@ def extract_user_inputs() -> dict:
     max_hashtags = request.form.get('maxHashtags', 5)
     
     # Extract scraping data
+    profile_url = request.form.get('profileUrl', '')
     scrape_url = request.form.get('scrapeUrl', '')
     scrape_prompt = request.form.get('scrapePrompt', 'Extract the main content from this page')
 
@@ -49,18 +50,18 @@ def extract_user_inputs() -> dict:
         "tone": tone,
         "includeHashtags": include_hashtags,
         "maxHashtags": max_hashtags,
+        "profileUrl": profile_url,
         "scrapeUrl": scrape_url,
         "scrapePrompt": scrape_prompt
     }
     return user_input
 
 
-def create_prompt(user_input: dict, scraped_content: str = None) -> str:
+def create_prompt(user_input: dict) -> str:
     """Create a prompt for the social media assistant agent.
     
     Args:
         user_input: Dictionary containing user inputs.
-        scraped_content: Optional content scraped from a website.
         
     Returns:
         Formatted prompt string for the agent.
@@ -73,17 +74,15 @@ def create_prompt(user_input: dict, scraped_content: str = None) -> str:
         Tone: {user_input["tone"]}
     """
     
-    # Add scraped content if available
-    if scraped_content:
-        prompt += f"""
-        Use the following information scraped from a website:
-        {scraped_content}
-        """
-    
     if user_input["includeHashtags"]:
         prompt += f"""
             Include {user_input["maxHashtags"]} relevant hashtags for the post.
         """
+    else:
+        prompt += f"""
+            Do not include hashtags for the post.
+        """
+
     return prompt
 
 

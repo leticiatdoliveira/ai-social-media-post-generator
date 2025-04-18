@@ -1,7 +1,5 @@
 // static/js/main.js
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM fully loaded');
-    
+document.addEventListener('DOMContentLoaded', function() {   
     // Initialize step tracking
     let currentStep = 1;
     // Settings modal functionality
@@ -9,19 +7,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsModal = document.getElementById('settingsModal');
     const closeBtn = document.querySelector('.close');
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-    
-    // Debug element references
-    console.log('settingsBtn element:', settingsBtn);
-    console.log('settingsModal element:', settingsModal);
-    console.log('closeBtn element:', closeBtn);
-    
     // Load saved settings if they exist
     loadSettings();
     
     // Show the settings modal when the settings button is clicked
     if (settingsBtn) {
         settingsBtn.addEventListener('click', function(e) {
-            console.log('Settings button clicked');
             e.preventDefault(); // Prevent any default behavior
             settingsModal.classList.remove('hidden');
             settingsModal.classList.add('flex');
@@ -29,7 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add a direct onclick attribute as a fallback
         settingsBtn.onclick = function() {
-            console.log('Settings button onclick triggered');
             settingsModal.classList.remove('hidden');
             settingsModal.classList.add('flex');
             return false;

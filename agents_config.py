@@ -6,8 +6,8 @@ import os
 from utils.vector_store import create_vector_store_from_file
 
 
-def create_company_insights_agent(context_file_path: Optional[str] = None, model: str = None,
-                                  user_settings: dict = None) -> Optional[Agent]:
+def create_file_agent(name: str, instructions: str, context_file_path: str, 
+                                  model: str, user_settings: dict) -> Optional[Agent]:
     """Create and return a company insights agent with the provided context file.
     
     Args:
@@ -18,8 +18,8 @@ def create_company_insights_agent(context_file_path: Optional[str] = None, model
     Returns:
         The created agent or None if creation failed.
     """
-    # Default to using context.pdf if no file is provided
-    file_paths = [context_file_path] if context_file_path else ["context.pdf"]
+
+    file_paths = [context_file_path]
     
     # Check if the file exists
     for path in file_paths:
@@ -32,11 +32,8 @@ def create_company_insights_agent(context_file_path: Optional[str] = None, model
         vector_store = create_vector_store_from_file(file_paths, user_settings)
         
         return Agent(
-            name="company_insights",
-            instructions="""
-            Your job is to extract insights about the company from the provided document.
-            Your goal is to provide useful information to the marketing team.
-            """,
+            name=name,
+            instructions=instructions,
             model=model,
             tools=[
                 FileSearchTool(vector_store_ids=[vector_store.id])

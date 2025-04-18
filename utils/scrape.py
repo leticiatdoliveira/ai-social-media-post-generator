@@ -1,6 +1,9 @@
 from scrapegraph_py import Client
 from scrapegraphai.graphs import SmartScraperGraph
-
+import json
+import os
+import hashlib
+import time
 
 def init_client(api_key: str) -> Client:
     """Initialize the Scrapegraph client."""
@@ -47,3 +50,51 @@ def scrape_website_openai(config: dict, url: str, prompt: str) -> str:
 
     result = smart_scraper_graph.run()
     return result
+
+
+def scrape_to_json(api_key, model, url, prompt):
+    if not api_key:
+        return jsonify({"error": "ScrapeGraphAI API key is required for website scraping"})
+    
+    try:
+        # *************** SDK *************** #
+        # client = init_client(api_key)
+        
+        # scraped_content = scrape_website(
+        #     client=client,
+        #     url=url,
+        #     prompt=prompt
+        # )
+        # *********************************** #
+        
+        # *************** AI *************** #
+        graph_config = init_scrapegraph_openai(api_key, model)
+
+        scraped_content = scrape_website_openai(
+            config=graph_config,
+            url=url,
+            prompt=prompt
+        )
+        # *********************************** #
+
+        # Create directory using a reference to the project root
+        # This will work regardless of where the function is called from
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        output_dir = os.path.join(project_root, "scraped")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate a unique filename based on URL and timestamp
+        url_hash = hashlib.md5(url.encode()).hexdigest()[:10]
+        timestamp = int(time.time())
+        filename = f"{url_hash}_{timestamp}.json"
+        file_path = os.path.join(output_dir, filename)
+        
+        # Save the scraped content to a JSON file
+        with open(file_path, 'w') as f:
+            json.dump(scraped_content, f, indent=4)
+        
+        return file_path
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to scrape website: {str(e)}"})
+    
