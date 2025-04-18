@@ -286,9 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadedContextFile = null;
         
         // Reset scraping fields
+        document.getElementById('profileUrl').value = '';
         document.getElementById('scrapeUrl').value = '';
         document.getElementById('scrapePrompt').value = '';
-        document.getElementById('scrapingContainer').style.display = 'none';
 
         // Hide results
         document.getElementById('result').classList.add('hidden');

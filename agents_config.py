@@ -6,7 +6,7 @@ import os
 from utils.vector_store import create_vector_store_from_file
 
 
-def create_file_agent(name: str, instructions: str, context_file_path: str, 
+def create_file_agent(name: str, instructions: str, context_file_path: str | None, 
                                   model: str, user_settings: dict) -> Optional[Agent]:
     """Create and return a company insights agent with the provided context file.
     
@@ -18,8 +18,10 @@ def create_file_agent(name: str, instructions: str, context_file_path: str,
     Returns:
         The created agent or None if creation failed.
     """
-
-    file_paths = [context_file_path]
+    
+    if context_file_path is None: return None
+    
+    file_paths = [context_file_path] 
     
     # Check if the file exists
     for path in file_paths:
@@ -47,7 +49,8 @@ def create_file_agent(name: str, instructions: str, context_file_path: str,
         return None
 
 
-def create_social_media_assistant(model: str, tools: List = None, tool_choice: str = "none") -> Optional[Agent]:
+def create_social_media_assistant(model: str, tools: List = None, 
+                                  tool_choice: str = "none") -> Optional[Agent]:
     """Create a social media assistant agent.
     
     Args:

@@ -144,7 +144,7 @@
                             <span class="ml-3">Include hashtags</span>
                         </label>
                     </div>
-                    <div id="maxHashtagsContainer" class="mb-6">
+                    <div id="maxHashtagsContainer" class="mb-6 hidden">
                         <label for="maxHashtags" class="block mb-2 font-medium">Maximum number of hashtags</label>
                         <input type="number" id="maxHashtags" name="maxHashtags" min="1" max="30" value="5" class="w-32 p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white outline-none">
                     </div>
@@ -164,20 +164,6 @@
                 <h3 class="text-xl font-semibold mb-4">Generated Content</h3>
                 <div id="content-display" class="bg-[#1a1a1a] border border-borderColor rounded-lg p-6 mb-4 whitespace-pre-wrap"></div>
                 <button id="copyBtn" class="bg-secondary hover:bg-secondary/80 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"><i class="fas fa-copy"></i> Copy to Clipboard</button>
-
-                <div id="feedback-container" class="mt-6">
-                    <button id="btn-feedback" class="text-accent hover:text-accent/80 font-medium py-2 px-0 bg-transparent border-none transition-colors">Provide Feedback to Improve</button>
-                    
-                    <div id="feedback-form" style="display: none;" class="mt-4">
-                        <textarea id="feedback-text" placeholder="What would you like to improve about this content?" class="w-full p-3 bg-[#1a1a1a] border border-borderColor rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 text-white font-sans mb-3" rows="4"></textarea>
-                        <div class="flex gap-3">
-                            <button id="btn-submit-feedback" class="bg-primary hover:bg-primaryHover text-white font-medium py-2 px-4 rounded-lg transition-colors">Submit Feedback</button>
-                            <button id="btn-cancel-feedback" class="bg-transparent border border-borderColor text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors">Cancel</button>
-                        </div>
-                    </div>
-                    
-                    <div id="feedback-success" class="hidden text-successColor p-4 my-4 bg-successColor/10 rounded-lg"></div>
-                </div>
             </div>
         </div>
 
